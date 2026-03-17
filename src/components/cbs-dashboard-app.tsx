@@ -16,7 +16,7 @@ import {
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 import { Chart as ReactChart } from "react-chartjs-2";
 
-import type { BoiDashboardSummary, BoiSeries } from "@/lib/boi-types";
+import type { BoiDashboardSummary, BoiPoint, BoiSeries } from "@/lib/boi-types";
 import type { DashboardSummary, NumericPoint, PricePoint, RegionDashboard } from "@/lib/cbs-types";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Filler, Tooltip, Legend);
@@ -196,6 +196,10 @@ function monthInputValue(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function yearsAgoMonthValue(yearsAgo: number, date = new Date()) {
+  return monthInputValue(new Date(date.getFullYear() - yearsAgo, date.getMonth(), 1));
+}
+
 function yearValue(date = new Date()) {
   return String(date.getFullYear());
 }
@@ -261,6 +265,37 @@ function filterByYearRange(points: NumericPoint[], startYear: string, endYear: s
   return points.filter((point) => {
     const year = Number(point.rawDate.slice(0, 4));
     return Number.isFinite(year) && year >= minYear && year <= maxYear;
+  });
+}
+
+function boiMonthKey(rawDate: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+    return rawDate.slice(0, 7);
+  }
+
+  if (/^\d{4}-\d{2}$/.test(rawDate)) {
+    return rawDate;
+  }
+
+  const quarterMatch = rawDate.match(/^(\d{4})-Q([1-4])$/);
+  if (quarterMatch) {
+    const [, year, quarter] = quarterMatch;
+    const endMonth = String(Number(quarter) * 3).padStart(2, "0");
+    return `${year}-${endMonth}`;
+  }
+
+  if (/^\d{4}$/.test(rawDate)) {
+    return `${rawDate}-12`;
+  }
+
+  return null;
+}
+
+function filterBoiPointsByMonthRange(points: BoiPoint[], start: string, end: string) {
+  return points.filter((point) => {
+    const monthKey = boiMonthKey(point.date);
+
+    return monthKey != null && monthKey >= start && monthKey <= end;
   });
 }
 
@@ -561,6 +596,8 @@ export function CbsDashboardApp() {
   const [selectedCompareRegions, setSelectedCompareRegions] = useState<string[]>(DEFAULT_COMPARE_REGIONS);
   const [topStart, setTopStart] = useState("2022-01");
   const [topEnd, setTopEnd] = useState(monthInputValue());
+  const [boiStart, setBoiStart] = useState(yearsAgoMonthValue(10));
+  const [boiEnd, setBoiEnd] = useState(monthInputValue());
   const [detailStart, setDetailStart] = useState("2020-01");
   const [detailEnd, setDetailEnd] = useState(monthInputValue());
   const [annualStart, setAnnualStart] = useState("2004");
@@ -775,6 +812,10 @@ export function CbsDashboardApp() {
   const latestStock = summary?.topSeries.stock.at(-1)?.value ?? null;
   const boiPalette = ["#0f766e", "#2563eb", "#ea580c", "#7c3aed", "#db2777", "#0891b2"];
   const boiSeries = boiSummary?.series ?? [];
+  const filteredBoiSeries = boiSeries.map((series) => ({
+    ...series,
+    points: filterBoiPointsByMonthRange(series.points, boiStart, boiEnd),
+  }));
   const controlClassName =
     "block w-full rounded-[18px] border border-[rgba(15,23,42,0.1)] bg-[rgba(255,255,255,0.96)] px-4 py-3 text-[#13202b] outline-none transition focus:border-[#0f766e] focus:bg-white";
   const isRefreshing =
@@ -903,8 +944,43 @@ export function CbsDashboardApp() {
 
             {boiState === "ready" && boiSeries.length > 0 ? (
               <>
+                <section className="surface-panel p-6">
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#64748b]">בנק ישראל</p>
+                      <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[#13202b]">טווח תצוגה</h2>
+                      <p className="mt-3 max-w-3xl text-sm leading-7 text-[#5d6b7c]">
+                        בחירת תאריכים אחת לכל כרטיסי המדדים והגרפים בדשבורד של בנק ישראל.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="text-sm font-medium text-[#5d6b7c]">
+                        התחלה
+                        <input
+                          className={`mt-2 ${controlClassName}`}
+                          max={boiEnd}
+                          onChange={(event) => setBoiStart(event.target.value)}
+                          type="month"
+                          value={boiStart}
+                        />
+                      </label>
+                      <label className="text-sm font-medium text-[#5d6b7c]">
+                        סיום
+                        <input
+                          className={`mt-2 ${controlClassName}`}
+                          min={boiStart}
+                          onChange={(event) => setBoiEnd(event.target.value)}
+                          type="month"
+                          value={boiEnd}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </section>
+
                 <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-                  {boiSeries.slice(0, 4).map((series, index) => {
+                  {filteredBoiSeries.slice(0, 4).map((series, index) => {
                     const latestValue = series.points.at(-1)?.value ?? null;
 
                     return (
@@ -921,7 +997,7 @@ export function CbsDashboardApp() {
 
                 {BOI_SECTION_CONFIG.map((section) => {
                   const sectionSeries = section.keys
-                    .map((key) => boiSeries.find((s) => s.key === key))
+                    .map((key) => filteredBoiSeries.find((s) => s.key === key))
                     .filter((s): s is BoiSeries => s != null);
 
                   if (sectionSeries.length === 0) {
