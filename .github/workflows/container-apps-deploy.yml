@@ -1,0 +1,52 @@
+name: Container Apps Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+
+    env:
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+      AZURE_ACR_NAME: ${{ vars.AZURE_ACR_NAME }}
+      AZURE_CONTAINERAPPS_ENVIRONMENT: ${{ vars.AZURE_CONTAINERAPPS_ENVIRONMENT }}
+      AZURE_CONTAINER_APP_NAME: ${{ vars.AZURE_CONTAINER_APP_NAME }}
+      CONTAINER_IMAGE_NAME: ${{ vars.CONTAINER_IMAGE_NAME }}
+      CONTAINER_PORT: ${{ vars.CONTAINER_PORT }}
+      HEALTH_PATH: ${{ vars.HEALTH_PATH }}
+      IMAGE_TAG: ${{ github.sha }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Azure login with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set execute permissions
+        run: chmod +x scripts/ensure-container-apps.sh scripts/deploy-container-apps.sh
+
+      - name: Verify Container Apps target exists
+        run: ./scripts/ensure-container-apps.sh --verify-only
+
+      - name: Build, push, and deploy
+        run: ./scripts/deploy-container-apps.sh

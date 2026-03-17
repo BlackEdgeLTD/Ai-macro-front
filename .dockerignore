@@ -1,0 +1,11 @@
+.git
+.github
+.next
+.blob-cache
+coverage
+node_modules
+npm-debug.log*
+README.md
+.env*
+.DS_Store
+*.tsbuildinfo
