@@ -55,15 +55,12 @@ const BOI_SECTION_CONFIG: Array<{ title: string; keys: string[] }> = [
     keys: ["housing_credit_total", "new_mortgage_rate", "new_mortgage_volume", "construction_cost_index"],
   },
   {
-    title: "מגזר חיצוני ושוק ההון",
-    keys: [
-      "usd_ils",
-      "current_account_pct_gdp",
-      "fx_reserves_usd",
-      "gov_bond_yield_10y",
-      "gov_deficit_monthly",
-      "m1_money_supply",
-    ],
+    title: "מגזר חיצוני",
+    keys: ["usd_ils", "neer", "fx_reserves_usd", "current_account_pct_gdp"],
+  },
+  {
+    title: "שוק ההון ופיסקלי",
+    keys: ["gov_bond_yield_10y", "gov_deficit_monthly", "m1_money_supply", "gdp_growth"],
   },
 ];
 
@@ -1050,11 +1047,15 @@ export function CbsDashboardApp() {
                     return null;
                   }
 
+                  // Keep even count so the 2-col grid never has an orphan chart
+                  const evenSeries =
+                    sectionSeries.length % 2 !== 0 ? sectionSeries.slice(0, -1) : sectionSeries;
+
                   return (
                     <section key={section.title} className="space-y-5">
                       <h3 className="text-2xl font-semibold text-[#13202b]">{section.title}</h3>
                       <div className="grid gap-5 xl:grid-cols-2">
-                        {sectionSeries.map((series, index) => (
+                        {evenSeries.map((series, index) => (
                           <ChartSurface
                             key={series.key}
                             title={series.label}
