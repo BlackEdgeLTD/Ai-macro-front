@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import {
   BarElement,
   CategoryScale,
@@ -13,11 +14,17 @@ import {
   PointElement,
   Tooltip,
 } from "chart.js";
-import { startTransition, useDeferredValue, useEffect, useState } from "react";
-import { Chart as ReactChart } from "react-chartjs-2";
+import { Component, startTransition, useDeferredValue, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
 
 import type { BoiDashboardSummary, BoiPoint, BoiSeries } from "@/lib/boi-types";
 import type { DashboardSummary, NumericPoint, PricePoint, RegionDashboard } from "@/lib/cbs-types";
+
+const ReactChart = dynamic(
+  () => import("react-chartjs-2").then((module) => module.Chart),
+  {
+    ssr: false,
+  },
+);
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Filler, Tooltip, Legend);
 
@@ -423,7 +430,9 @@ function ChartSurface({
 
       {hasData ? (
         <div className="h-72">
-          <ReactChart type={type} data={data} options={createChartOptions(type, data.datasets.length > 1)} />
+          <ChartErrorBoundary title={title}>
+            <ReactChart type={type} data={data} options={createChartOptions(type, data.datasets.length > 1)} />
+          </ChartErrorBoundary>
         </div>
       ) : (
         <div className="flex h-72 items-center justify-center rounded-3xl border border-dashed border-[rgba(15,23,42,0.12)] bg-[rgba(241,245,249,0.72)] text-sm text-[#5d6b7c]">
@@ -432,6 +441,43 @@ function ChartSurface({
       )}
     </article>
   );
+}
+
+type ChartErrorBoundaryProps = {
+  children: ReactNode;
+  title: string;
+};
+
+type ChartErrorBoundaryState = {
+  hasError: boolean;
+};
+
+class ChartErrorBoundary extends Component<ChartErrorBoundaryProps, ChartErrorBoundaryState> {
+  override state: ChartErrorBoundaryState = {
+    hasError: false,
+  };
+
+  static getDerivedStateFromError() {
+    return {
+      hasError: true,
+    };
+  }
+
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error(`Chart render failed for ${this.props.title}`, error, errorInfo);
+  }
+
+  override render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-72 items-center justify-center rounded-3xl border border-dashed border-amber-300 bg-amber-50 px-6 text-center text-sm text-amber-900">
+          הגרף &quot;{this.props.title}&quot; לא נטען בדפדפן הזה.
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 function MetricCard({

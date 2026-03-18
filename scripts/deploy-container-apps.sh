@@ -44,7 +44,7 @@ echo "Logging in to ACR ${acr_name}"
 az acr login --name "$acr_name" >/dev/null
 
 echo "Building image ${image_ref}"
-docker build --tag "$image_ref" .
+docker build --platform linux/amd64 --tag "$image_ref" .
 
 echo "Pushing image ${image_ref}"
 docker push "$image_ref"
