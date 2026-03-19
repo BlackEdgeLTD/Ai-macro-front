@@ -3,7 +3,6 @@ import path from "node:path";
 
 const CACHE_DIR = path.join(process.cwd(), ".blob-cache");
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 type CacheEntry<T> = {
   updatedAt: string;
@@ -17,14 +16,14 @@ function cachePath(key: string) {
   return path.join(CACHE_DIR, `${safeKey}.json`);
 }
 
-function isFresh(updatedAt: string, ttlMs: number) {
+function isFresh(updatedAt: string) {
   const timestamp = Date.parse(updatedAt);
 
   if (!Number.isFinite(timestamp)) {
     return false;
   }
 
-  return Date.now() - timestamp < ttlMs;
+  return Date.now() - timestamp < WEEK_MS;
 }
 
 async function readCache<T>(key: string) {
@@ -60,17 +59,9 @@ async function writeCsvCache(key: string, csv: string) {
 }
 
 export async function withWeeklyBlobCache<T>(key: string, loader: () => Promise<T>): Promise<T> {
-  return withBlobCache(key, loader, WEEK_MS);
-}
-
-export async function withDailyBlobCache<T>(key: string, loader: () => Promise<T>): Promise<T> {
-  return withBlobCache(key, loader, DAY_MS);
-}
-
-async function withBlobCache<T>(key: string, loader: () => Promise<T>, ttlMs: number): Promise<T> {
   const cached = await readCache<T>(key);
 
-  if (cached && isFresh(cached.updatedAt, ttlMs)) {
+  if (cached && isFresh(cached.updatedAt)) {
     return cached.value;
   }
 
@@ -104,24 +95,9 @@ export async function withWeeklyBlobArtifacts<T>(
   key: string,
   loader: () => Promise<{ value: T; csv: string }>,
 ): Promise<T> {
-  return withBlobArtifacts(key, loader, WEEK_MS);
-}
-
-export async function withDailyBlobArtifacts<T>(
-  key: string,
-  loader: () => Promise<{ value: T; csv: string }>,
-): Promise<T> {
-  return withBlobArtifacts(key, loader, DAY_MS);
-}
-
-async function withBlobArtifacts<T>(
-  key: string,
-  loader: () => Promise<{ value: T; csv: string }>,
-  ttlMs: number,
-): Promise<T> {
   const cached = await readCache<T>(key);
 
-  if (cached && isFresh(cached.updatedAt, ttlMs)) {
+  if (cached && isFresh(cached.updatedAt)) {
     return cached.value;
   }
 

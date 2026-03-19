@@ -39,23 +39,6 @@ chmod +x scripts/ensure-container-apps.sh scripts/deploy-container-apps.sh
 ./scripts/ensure-container-apps.sh
 ```
 
-To bootstrap Microsoft Entra auth plus blob storage for user profiles:
-
-```bash
-chmod +x scripts/bootstrap-auth-storage.sh
-./scripts/bootstrap-auth-storage.sh
-```
-
-This script will:
-
-- create or reuse an Entra app registration
-- generate a new client secret
-- create or reuse a storage account and the `user-profiles` container
-- update `.env.local` with the auth and storage values the app expects
-- push those values into Azure Container Apps secrets and env vars
-- set `AUTH_URL` for local and production auth callback generation
-- add the local callback URI and, when the Container App already exists, the production callback URI
-
 Default Azure names:
 
 - resource group: `macro-front-rg`
