@@ -1,5 +1,5 @@
 import { BOI_SERIES_DEFINITIONS, type BoiSeriesDefinition } from "@/lib/boi-catalog";
-import { withWeeklyBlobArtifacts } from "@/lib/blob-cache";
+import { withDailyBlobArtifacts } from "@/lib/blob-cache";
 import { toCsv, type SourceTableRow } from "@/lib/source-table";
 import type { BoiDashboardSummary, BoiPoint, BoiSeries } from "@/lib/boi-types";
 
@@ -186,7 +186,7 @@ async function fetchBoiDashboardSummaryFresh(): Promise<BoiDashboardSummary> {
 }
 
 export async function fetchBoiDashboardSummary(): Promise<BoiDashboardSummary> {
-  return withWeeklyBlobArtifacts("boi-source-v2", async () => {
+  return withDailyBlobArtifacts("boi-source-v3", async () => {
     const value = await fetchBoiDashboardSummaryFresh();
     const rows: SourceTableRow[] = value.series.flatMap((series) =>
       series.points.map((point) => ({

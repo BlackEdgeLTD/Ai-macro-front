@@ -37,11 +37,28 @@ A search bar on the dashboard where users type natural language queries in Hebre
 
 Plus edits to `cbs-dashboard-app.tsx` for the search UI.
 
-## 1. Context Builder (`gemini.ts`)
+## Phased Rollout
 
-The key insight: we already have all the data cached in `.blob-cache/`. No extra BOI/CBS calls needed — just read the cache and compress it into a prompt.
+### Phase 1 — Backend Foundation
 
-Context format sent to Gemini:
+Goal:
+
+- Make the server capable of answering one search query from cached macro data.
+
+Scope:
+
+- Add `@google/genai`
+- Add `GEMINI_API_KEY`
+- Create `src/lib/gemini.ts`
+- Create `src/app/api/search/route.ts`
+- Read BOI + CBS from `.blob-cache/` only
+- Stream plain-text responses back to the client
+
+Context builder:
+
+The key insight is that we already have BOI and CBS artifacts cached locally. The first phase should only compress that cached data into a prompt and avoid any new BOI/CBS fetch path.
+
+Context format:
 
 ```
 ## מצב מאקרו נוכחי (נכון ל-{date})
@@ -67,7 +84,7 @@ Context format sent to Gemini:
 {compact CSV — ~30 rows x 5 columns per series}
 ```
 
-Context builder logic:
+Reference implementation:
 
 ```typescript
 export async function buildMacroContext(): Promise<string> {
@@ -81,9 +98,7 @@ export async function buildMacroContext(): Promise<string> {
 }
 ```
 
-Total context size: ~5-8KB of text — well within Gemini's context window and cheap to process.
-
-## 2. Gemini Streaming (`gemini.ts`)
+Streaming implementation:
 
 ```typescript
 import { GoogleGenAI } from "@google/genai";
@@ -111,7 +126,7 @@ export async function streamSearch(query: string, context: string) {
 }
 ```
 
-## 3. API Route (`/api/search/route.ts`)
+Route shape:
 
 ```typescript
 export async function POST(request: Request) {
@@ -119,7 +134,6 @@ export async function POST(request: Request) {
   const context = await buildMacroContext();
   const geminiStream = await streamSearch(query, context);
 
-  // Convert Gemini async iterator -> ReadableStream for Next.js
   const stream = new ReadableStream({
     async start(controller) {
       for await (const chunk of geminiStream) {
@@ -138,7 +152,26 @@ export async function POST(request: Request) {
 }
 ```
 
-## 4. Client UI (component update)
+Exit criteria:
+
+- `POST /api/search` accepts one query and returns a streamed answer
+- Works with cached BOI + CBS data only
+- No extra source fetches
+
+### Phase 2 — Dashboard UI
+
+Goal:
+
+- Expose the backend through a usable search UI inside the dashboard.
+
+Scope:
+
+- Add a search bar to `cbs-dashboard-app.tsx`
+- Add a response panel below it
+- Render streaming text progressively
+- Add loading and error states
+
+Target UI:
 
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -152,10 +185,12 @@ export async function POST(request: Request) {
 └──────────────────────────────────────────────────────┘
 ```
 
-- Search bar positioned below the BOI hero section (or global, above both views)
+UI behavior:
+
+- Search bar positioned below the BOI hero section or as a global search module
 - Streaming response rendered as markdown
-- Loading state: pulsing cursor
-- Error state: retry button
+- Loading state shows partial streamed text and cursor
+- Error state includes retry
 
 Client streaming reader:
 
@@ -171,19 +206,70 @@ const decoder = new TextDecoder();
 while (true) {
   const { done, value } = await reader.read();
   if (done) break;
-  setText(prev => prev + decoder.decode(value));
+  setText((prev) => prev + decoder.decode(value));
 }
 ```
 
-## 5. Environment and Dependencies
+Exit criteria:
+
+- User can ask one question from the dashboard
+- Response appears incrementally without full-page reload
+- Failure state is understandable and retryable
+
+### Phase 3 — Smart References
+
+Goal:
+
+- Make answers map back to charts and series already on screen.
+
+Scope:
+
+- Gemini returns structured output such as:
+
+```json
+{
+  "analysis": "...",
+  "referencedSeries": ["policy_rate", "housing_credit_total"],
+  "insight": "..."
+}
+```
+
+- Client highlights or scrolls to referenced charts
+- Add suggested follow-up questions under the response
+
+Exit criteria:
+
+- Search results can point users back to specific BOI/CBS charts
+- Follow-up suggestions are generated from the same answer payload
+
+### Phase 4 — Conversational Layer
+
+Goal:
+
+- Turn one-off search into a follow-up workflow.
+
+Scope:
+
+- Keep chat history in client state
+- Send previous turns as trimmed conversation context
+- Support "ask a follow-up" instead of starting over
+
+Exit criteria:
+
+- User can ask a second question that depends on the first answer
+- The app preserves enough context to stay coherent without bloating the prompt
+
+## Environment and Dependencies
 
 ```bash
 npm install @google/genai
 ```
 
-One env var: `GEMINI_API_KEY`
+Required env var:
 
-## 6. Cost and Performance
+- `GEMINI_API_KEY`
+
+## Cost and Performance
 
 | Factor | Value |
 |--------|-------|
@@ -195,24 +281,9 @@ One env var: `GEMINI_API_KEY`
 | Full response | ~2-4 seconds streamed |
 | Extra BOI/CBS calls | Zero (reads blob cache) |
 
-## Implementation Phases
+## Recommended Build Order
 
-### Phase 1 — MVP
-
-- `@google/genai` dependency
-- `src/lib/gemini.ts` — context builder + streaming client
-- `src/app/api/search/route.ts` — POST streaming endpoint
-- Search bar + response panel in the dashboard component
-- Works across BOI and CBS data
-
-### Phase 2 — Smart References
-
-- Gemini returns structured JSON: `{ analysis, referencedSeries[], insight }`
-- Client auto-scrolls to / highlights referenced charts
-- Suggested follow-up questions
-
-### Phase 3 — Conversational
-
-- Multi-turn: chat history maintained in client state
-- Send previous Q&A as conversation context
-- "Ask a follow-up" UX
+1. Phase 1 first, because it proves the cached-data prompt and streaming route.
+2. Phase 2 next, because it makes the feature usable in the dashboard.
+3. Phase 3 after that, because references depend on the base answer format being stable.
+4. Phase 4 last, because conversation should be added only after single-turn quality is solid.

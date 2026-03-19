@@ -1,32 +1,20 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import {
-  BarElement,
-  CategoryScale,
-  Chart as ChartJS,
-  type ChartData,
-  type ChartOptions,
-  Filler,
-  Legend,
-  LineElement,
-  LinearScale,
-  PointElement,
-  Tooltip,
-} from "chart.js";
+import type { ChartData, ChartOptions } from "chart.js";
 import { Component, startTransition, useDeferredValue, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
+import { signOut, useSession } from "next-auth/react";
 
 import type { BoiDashboardSummary, BoiPoint, BoiSeries } from "@/lib/boi-types";
 import type { DashboardSummary, NumericPoint, PricePoint, RegionDashboard } from "@/lib/cbs-types";
+import type { CustomDashboardResponse } from "@/lib/custom-dashboard-types";
 
 const ReactChart = dynamic(
-  () => import("react-chartjs-2").then((module) => module.Chart),
+  () => import("@/components/chart-client").then((module) => module.ChartClient),
   {
     ssr: false,
   },
 );
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Filler, Tooltip, Legend);
 
 type ChartKind = "line" | "bar";
 
@@ -39,6 +27,10 @@ type SeriesPairConfig = {
   annualLabel: string;
   monthlyType?: ChartKind;
   annualType?: ChartKind;
+};
+
+type AddedDashboard = CustomDashboardResponse & {
+  id: string;
 };
 
 const BOI_SECTION_CONFIG: Array<{ title: string; keys: string[] }> = [
@@ -625,16 +617,25 @@ function RegionPairCard({
 }
 
 export function CbsDashboardApp() {
+  const { data: session } = useSession();
   const [view, setView] = useState<"home" | "cbs" | "boi">("home");
   const [summaryState, setSummaryState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [regionState, setRegionState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [boiState, setBoiState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [searchState, setSearchState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [builderState, setBuilderState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [regionError, setRegionError] = useState<string | null>(null);
   const [boiError, setBoiError] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [builderError, setBuilderError] = useState<string | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [regionData, setRegionData] = useState<RegionDashboard | null>(null);
   const [boiSummary, setBoiSummary] = useState<BoiDashboardSummary | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResponse, setSearchResponse] = useState("");
+  const [builderPrompt, setBuilderPrompt] = useState("");
+  const [customDashboards, setCustomDashboards] = useState<AddedDashboard[]>([]);
   const [selectedRegion, setSelectedRegion] = useState("סך הכל");
   const [selectedCompareRegions, setSelectedCompareRegions] = useState<string[]>(DEFAULT_COMPARE_REGIONS);
   const [topStart, setTopStart] = useState("2022-01");
@@ -854,6 +855,7 @@ export function CbsDashboardApp() {
   const latestNewDwelling = summary?.topSeries.newDwelling.at(-1)?.percent ?? null;
   const latestStock = summary?.topSeries.stock.at(-1)?.value ?? null;
   const boiPalette = ["#0f766e", "#2563eb", "#ea580c", "#7c3aed", "#db2777", "#0891b2"];
+  const builderPalette = ["#0f766e", "#2563eb", "#f97316", "#7c3aed"];
   const boiSeries = boiSummary?.series ?? [];
   const filteredBoiSeries = boiSeries.map((series) => ({
     ...series,
@@ -876,12 +878,136 @@ export function CbsDashboardApp() {
     setBoiState("idle");
   }
 
+  async function submitSearch() {
+    const query = searchQuery.trim();
+
+    if (!query) {
+      return;
+    }
+
+    setSearchState("loading");
+    setSearchError(null);
+    setSearchResponse("");
+
+    try {
+      const response = await fetch("/api/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query }),
+      });
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { message?: string; error?: string } | null;
+        throw new Error(body?.message ?? body?.error ?? "Search request failed");
+      }
+
+      if (!response.body) {
+        throw new Error("Search response did not include a stream");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let text = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        text += decoder.decode(value, { stream: true });
+        setSearchResponse(text);
+      }
+
+      text += decoder.decode();
+      setSearchResponse(text);
+      setSearchState("ready");
+    } catch (error) {
+      setSearchError(error instanceof Error ? error.message : "Search failed");
+      setSearchState("error");
+    }
+  }
+
+  async function submitCustomDashboard() {
+    const prompt = builderPrompt.trim();
+
+    if (!prompt) {
+      return;
+    }
+
+    setBuilderState("loading");
+    setBuilderError(null);
+
+    try {
+      const response = await fetch("/api/dashboard-builder", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt }),
+      });
+
+      const body = (await response.json()) as CustomDashboardResponse & { message?: string; error?: string };
+
+      if (!response.ok) {
+        throw new Error(body.message ?? body.error ?? "Dashboard builder request failed");
+      }
+
+      setCustomDashboards((current) => [
+        {
+          ...body,
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        },
+        ...current,
+      ]);
+      setBuilderState("ready");
+    } catch (error) {
+      setBuilderError(error instanceof Error ? error.message : "Dashboard builder failed");
+      setBuilderState("error");
+    }
+  }
+
+  function removeCustomDashboard(id: string) {
+    setCustomDashboards((current) => current.filter((item) => item.id !== id));
+  }
+
+  function buildCustomDashboardChartData(dashboard: AddedDashboard): ChartData<ChartKind> {
+    return {
+      labels: dashboard.labels,
+      datasets: dashboard.datasets.map((dataset, index) => ({
+        label: dataset.unit ? `${dataset.label} (${dataset.unit})` : dataset.label,
+        data: dataset.data,
+        borderColor: builderPalette[index % builderPalette.length],
+        backgroundColor: `${builderPalette[index % builderPalette.length]}22`,
+        pointRadius: 0,
+        borderWidth: 2.5,
+        fill: dashboard.chartType !== "bar",
+        tension: 0.28,
+      })),
+    };
+  }
+
   return (
     <main className="page-shell px-4 py-6 text-[#13202b] sm:px-6 lg:px-8">
       <div className="page-orb page-orb--primary left-[-8rem] top-24 h-72 w-72" />
       <div className="page-orb page-orb--cool right-[-5rem] top-[28rem] h-80 w-80 [animation-delay:2s]" />
       <div className="mx-auto max-w-7xl">
         <section className="hero-panel fade-up px-6 py-7 sm:px-8 lg:px-10">
+          {session?.user && (
+            <div className="mb-4 flex items-center justify-end gap-3">
+              <span className="text-sm text-[#c7dde6]">{session.user.name}</span>
+              <button
+                className="rounded-full border border-[rgba(226,232,240,0.24)] bg-[rgba(255,255,255,0.08)] px-3 py-1 text-xs font-medium text-[#f8fbff] transition hover:border-[rgba(226,232,240,0.46)] hover:bg-[rgba(255,255,255,0.14)]"
+                onClick={() => signOut()}
+                type="button"
+              >
+                התנתק
+              </button>
+            </div>
+          )}
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <span className="kicker font-mono text-[#e2f8f5]">מאקרו ישראל</span>
@@ -954,6 +1080,140 @@ export function CbsDashboardApp() {
                 startTransition(() => setView("cbs"));
               }}
             />
+          </section>
+        ) : null}
+
+        {view !== "home" ? (
+          <section className="mt-8 surface-panel p-6 fade-up delay-1">
+            <div className="flex flex-col gap-5">
+              <div>
+                <p className="text-sm font-semibold tracking-[0.08em] text-[#64748b]">שאילתא טקסטואלית</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#13202b]">שאילתא טקסטואלית</h2>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-[#5d6b7c]">
+                  השאילתה נשלחת עם הקשר מקומי מהמטמון של בנק ישראל ולמ״ס, בלי משיכת נתוני מקור חדשה.
+                </p>
+              </div>
+
+              <form
+                className="grid gap-3 lg:grid-cols-[1fr_auto]"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void submitSearch();
+                }}
+              >
+                <input
+                  className={controlClassName}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="למשל: האם מחירי הדיור עולים מהר יותר מהשכר?"
+                  type="text"
+                  value={searchQuery}
+                />
+                <button
+                  className="rounded-[18px] bg-[#0f172a] px-5 py-3 text-sm font-medium text-[#f8fbff] transition hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={searchState === "loading" || searchQuery.trim().length === 0}
+                  type="submit"
+                >
+                  {searchState === "loading" ? "שולח..." : "חפש"}
+                </button>
+              </form>
+
+              {searchState !== "idle" ? (
+                <div className="rounded-[24px] border border-[rgba(15,23,42,0.08)] bg-[rgba(248,250,252,0.92)] p-5">
+                  {searchState === "error" ? (
+                    <div className="text-sm leading-7 text-red-700">
+                      חיפוש נכשל. {searchError}
+                    </div>
+                  ) : (
+                    <div className="whitespace-pre-wrap text-sm leading-7 text-[#334155]">
+                      {searchResponse || "מכין תשובה..."}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
+        {view !== "home" ? (
+          <section className="mt-8 surface-panel p-6 fade-up delay-1">
+            <div className="flex flex-col gap-5">
+              <div>
+                <p className="text-sm font-semibold tracking-[0.08em] text-[#64748b]">בנה גרף</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#13202b]">בנה גרף</h2>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-[#5d6b7c]">
+                  כתוב איזה קשר או השוואה אתה רוצה לראות, והאפליקציה תבחר סדרות BOI/CBS ותבנה גרף מהמטמון.
+                </p>
+              </div>
+
+              <form
+                className="grid gap-3 lg:grid-cols-[1fr_auto]"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void submitCustomDashboard();
+                }}
+              >
+                <input
+                  className={controlClassName}
+                  onChange={(event) => setBuilderPrompt(event.target.value)}
+                  placeholder="למשל: give me the correlation of unsold apartments and the interest as graph"
+                  type="text"
+                  value={builderPrompt}
+                />
+                <button
+                  className="rounded-[18px] bg-[#0f766e] px-5 py-3 text-sm font-medium text-[#f8fbff] transition hover:bg-[#115e59] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={builderState === "loading" || builderPrompt.trim().length === 0}
+                  type="submit"
+                >
+                  {builderState === "loading" ? "בונה..." : "בנה גרף"}
+                </button>
+              </form>
+
+              {builderState === "error" ? (
+                <div className="rounded-[24px] border border-red-200 bg-red-50 p-5 text-sm leading-7 text-red-700">
+                  יצירת הדשבורד נכשלה. {builderError}
+                </div>
+              ) : null}
+
+              {customDashboards.length > 0 ? (
+                <div className="space-y-6">
+                  <div className="rounded-[24px] border border-[rgba(15,23,42,0.08)] bg-[rgba(248,250,252,0.92)] p-5 text-sm leading-7 text-[#475569]">
+                    גרפים שנוספו אפשר למחוק. הגרפים ההתחלתיים של הדשבורד לא ניתנים למחיקה.
+                  </div>
+
+                  {customDashboards.map((dashboard) => (
+                    <div key={dashboard.id} className="space-y-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-medium text-[#64748b]">גרף נוסף</p>
+                          <p className="mt-1 text-sm text-[#5d6b7c]">{dashboard.prompt}</p>
+                        </div>
+                        <button
+                          className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
+                          onClick={() => removeCustomDashboard(dashboard.id)}
+                          type="button"
+                        >
+                          מחק גרף
+                        </button>
+                      </div>
+
+                      <ChartSurface
+                        title={dashboard.title}
+                        subtitle={
+                          dashboard.correlation != null
+                            ? `${dashboard.description} • correlation ${preciseFormatter.format(dashboard.correlation)}`
+                            : dashboard.description
+                        }
+                        type={dashboard.chartType}
+                        data={buildCustomDashboardChartData(dashboard)}
+                      />
+                      <div className="rounded-[24px] border border-[rgba(15,23,42,0.08)] bg-[rgba(248,250,252,0.92)] p-5 text-sm leading-7 text-[#475569]">
+                        סדרות שנבחרו: {dashboard.matchedSeries.join(" • ")}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </section>
         ) : null}
 

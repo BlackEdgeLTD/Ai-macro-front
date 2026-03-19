@@ -39,6 +39,8 @@ fi
 
 acr_login_server="$(az acr show --name "$acr_name" --resource-group "$resource_group" --query loginServer -o tsv)"
 image_ref="${acr_login_server}/${container_image_name}:${image_tag}"
+fqdn="$(az containerapp show --name "$container_app_name" --resource-group "$resource_group" --query properties.configuration.ingress.fqdn -o tsv)"
+auth_url="https://${fqdn}"
 
 echo "Logging in to ACR ${acr_name}"
 az acr login --name "$acr_name" >/dev/null
@@ -49,6 +51,16 @@ docker build --platform linux/amd64 --tag "$image_ref" .
 echo "Pushing image ${image_ref}"
 docker push "$image_ref"
 
+echo "Updating Container App secrets"
+az containerapp secret set \
+  --name "$container_app_name" \
+  --resource-group "$resource_group" \
+  --secrets \
+    auth-secret="$AUTH_SECRET" \
+    entra-client-secret="$AUTH_MICROSOFT_ENTRA_ID_SECRET" \
+    azure-storage-connection-string="$AZURE_STORAGE_CONNECTION_STRING" \
+  >/dev/null
+
 echo "Updating Container App ${container_app_name}"
 az containerapp update \
   --name "$container_app_name" \
@@ -56,10 +68,20 @@ az containerapp update \
   --image "$image_ref" \
   --min-replicas 0 \
   --max-replicas 1 \
-  --set-env-vars NODE_ENV=production HOSTNAME=0.0.0.0 PORT="$container_port" \
+  --replace-env-vars \
+    NODE_ENV=production \
+    HOSTNAME=0.0.0.0 \
+    PORT="$container_port" \
+    AUTH_URL="$auth_url" \
+    NEXTAUTH_URL="$auth_url" \
+    AUTH_SECRET=secretref:auth-secret \
+    AUTH_MICROSOFT_ENTRA_ID_ID="$AUTH_MICROSOFT_ENTRA_ID_ID" \
+    AUTH_MICROSOFT_ENTRA_ID_SECRET=secretref:entra-client-secret \
+    AUTH_MICROSOFT_ENTRA_ID_TENANT_ID="$AUTH_MICROSOFT_ENTRA_ID_TENANT_ID" \
+    AUTH_TRUST_HOST=true \
+    AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string \
   >/dev/null
 
-fqdn="$(az containerapp show --name "$container_app_name" --resource-group "$resource_group" --query properties.configuration.ingress.fqdn -o tsv)"
 health_url="https://${fqdn}${health_path}"
 
 echo "Verifying deployment at ${health_url}"
