@@ -41,3 +41,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Nadlan source data — kept locally only.
+# Runtime blob is committed at public/nadlan/data.v1.json.gz
+# (regenerated via scripts/extract-nadlan-blob.mjs from these sources).
+/src/nadlan/
