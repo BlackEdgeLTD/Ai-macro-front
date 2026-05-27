@@ -3,29 +3,11 @@
 import { useMemo } from "react";
 
 import type { NadlanData } from "@/types/nadlan";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 
-import { KpiCard } from "../shared/kpi-card";
 import { fmtCurrency, fmtNum } from "../shared/formatters";
 
 type AlertKind = "bad" | "warn" | "info";
 type Alert = { kind: AlertKind; emoji: string; title: string; body: string };
-
-const ALERT_STYLE: Record<AlertKind, string> = {
-  bad: "border-rose-300 bg-rose-50/80 text-rose-900",
-  warn: "border-amber-300 bg-amber-50/80 text-amber-900",
-  info: "border-sky-300 bg-sky-50/80 text-sky-900",
-};
 
 type Props = { data: NadlanData };
 
@@ -69,98 +51,79 @@ export function QualityTab({ data }: Props) {
   }, [q.future, q.high_pps, q.low_price, q.clean, q.total, cleanPct]);
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label='סה"כ עסקאות'
-          value={fmtNum(q.total)}
-          accent="linear-gradient(135deg, #1e40af 0%, #2563eb 100%)"
-        />
-        <KpiCard
-          label="נקיות (אחרי סינון)"
-          value={fmtNum(q.clean)}
-          detail={`${cleanPct.toFixed(1)}% מהסה"כ`}
-          accent="linear-gradient(135deg, #047857 0%, #10b981 100%)"
-        />
-        <KpiCard
-          label="חריגים מסוננים"
-          value={fmtNum(q.future + q.high_pps + q.low_price)}
-          detail="עתידי + ₪/מ״ר גבוה + מחיר נמוך"
-          accent="linear-gradient(135deg, #b91c1c 0%, #f97316 100%)"
-        />
-        <KpiCard
-          label='שטח > 1,000 מ"ר'
-          value={fmtNum(q.huge_area)}
-          detail="חריגי שטח שהושארו"
-          accent="linear-gradient(135deg, #b45309 0%, #f59e0b 100%)"
-        />
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-2">
-        {alerts.map((a, i) => (
-          <Card
-            key={i}
-            className={cn("border shadow-sm", ALERT_STYLE[a.kind])}
-          >
-            <CardContent className="space-y-1.5 p-4">
-              <p className="text-sm font-semibold">
-                <span aria-hidden className="me-2">
+    <>
+      <section className="dense-section">
+        <h2>🚨 איכות נתונים — בעיות שזוהו</h2>
+        <div>
+          {alerts.map((a, i) => (
+            <div key={i} className={`dense-alert ${a.kind}`}>
+              <strong>
+                <span aria-hidden style={{ marginInlineEnd: 6 }}>
                   {a.emoji}
                 </span>
                 {a.title}
-              </p>
-              <p className="text-xs opacity-80">{a.body}</p>
-            </CardContent>
-          </Card>
-        ))}
+              </strong>
+              {a.body}
+            </div>
+          ))}
+        </div>
+        <div className="dense-grid g-4" style={{ marginTop: 12 }}>
+          <div className="dense-kpi">
+            <div className="label">סה"כ עסקאות</div>
+            <div className="value">{fmtNum(q.total)}</div>
+          </div>
+          <div className="dense-kpi good">
+            <div className="label">נקיות (אחרי סינון)</div>
+            <div className="value">{fmtNum(q.clean)}</div>
+            <div className="delta">{cleanPct.toFixed(1)}%</div>
+          </div>
+          <div className="dense-kpi bad">
+            <div className="label">חריגים מסוננים</div>
+            <div className="value">{fmtNum(q.future + q.high_pps + q.low_price)}</div>
+            <div className="delta">עתידי + ₪/מ״ר גבוה + מחיר נמוך</div>
+          </div>
+          <div className="dense-kpi warn">
+            <div className="label">שטח &gt; 1,000 מ"ר</div>
+            <div className="value">{fmtNum(q.huge_area)}</div>
+            <div className="delta">חריגי שטח שהושארו</div>
+          </div>
+        </div>
       </section>
 
-      <Card className="surface-panel border-0 shadow-none">
-        <CardContent className="p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-[#13202b]">
-              דוגמאות חריגים
-            </h3>
-            <Badge variant="secondary">{data.outliers.length} שורות</Badge>
-          </div>
-          <div className="max-h-[480px] overflow-auto rounded-2xl border border-slate-200">
-            <Table>
-              <TableHeader className="sticky top-0 bg-white/95 backdrop-blur">
-                <TableRow>
-                  <TableHead>תאריך</TableHead>
-                  <TableHead>עיר</TableHead>
-                  <TableHead>שכונה / כתובת</TableHead>
-                  <TableHead>סוג</TableHead>
-                  <TableHead className="text-end">מ"ר</TableHead>
-                  <TableHead className="text-end">מחיר</TableHead>
-                  <TableHead className="text-end">₪/מ"ר</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.outliers.slice(0, 200).map((o, i) => (
-                  <TableRow key={i}>
-                    <TableCell>{o.d ?? "-"}</TableCell>
-                    <TableCell>{o.c ?? "-"}</TableCell>
-                    <TableCell className="max-w-[260px] truncate">
-                      {[o.nbh, o.addr].filter(Boolean).join(" · ") || "-"}
-                    </TableCell>
-                    <TableCell>{o.pt ?? "-"}</TableCell>
-                    <TableCell className="text-end tabular-nums">
-                      {o.sqm ?? "-"}
-                    </TableCell>
-                    <TableCell className="text-end tabular-nums">
-                      {fmtCurrency(o.p)}
-                    </TableCell>
-                    <TableCell className="text-end tabular-nums font-semibold text-rose-600">
-                      {fmtCurrency(o.pps)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section className="dense-section">
+        <h2>🔍 חריגים מובילים (₪/מ"ר &gt; 200K)</h2>
+        <div className="sub">לרוב קרקעות שדווחו כ-"1 מ"ר" - יוצרים מחירים אבסורדיים</div>
+        <div style={{ maxHeight: 480, overflow: "auto", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+          <table className="dense-section-table">
+            <thead>
+              <tr>
+                <th>תאריך</th>
+                <th>יישוב</th>
+                <th>כתובת</th>
+                <th>סוג</th>
+                <th>שטח</th>
+                <th>מחיר</th>
+                <th>₪/מ"ר</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.outliers.slice(0, 200).map((o, i) => (
+                <tr key={i}>
+                  <td>{o.d ?? "-"}</td>
+                  <td>{o.c ?? "-"}</td>
+                  <td>{[o.nbh, o.addr].filter(Boolean).join(" · ") || "-"}</td>
+                  <td>{o.pt ?? "-"}</td>
+                  <td className="num">{o.sqm ?? "-"}</td>
+                  <td className="num">{fmtCurrency(o.p)}</td>
+                  <td className="num">
+                    <span className="dense-pill bad">{fmtCurrency(o.pps)}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </>
   );
 }

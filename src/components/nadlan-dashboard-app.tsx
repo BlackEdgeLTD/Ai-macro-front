@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNadlanData } from "@/hooks/use-nadlan-data";
 
@@ -12,85 +11,73 @@ import { BuyExplorerTab } from "./nadlan/tabs/buy-explorer-tab";
 import { RentalsTab } from "./nadlan/tabs/rentals-tab";
 import { ComparisonsTab } from "./nadlan/tabs/comparisons-tab";
 import { QualityTab } from "./nadlan/tabs/quality-tab";
+import { fmtNum } from "./nadlan/shared/formatters";
 
 const TABS = [
-  { value: "overview", label: "סקירה כללית", emoji: "📊" },
-  { value: "macro", label: "מאקרו לאומי", emoji: "🗺️" },
-  { value: "buy", label: "מכר", emoji: "📋" },
-  { value: "rent", label: "שכירות", emoji: "🏠" },
-  { value: "compare", label: "השוואות", emoji: "⚖️" },
-  { value: "quality", label: "איכות נתונים", emoji: "🚨" },
+  { value: "overview", label: "📊 סקירה" },
+  { value: "national", label: "🗺️ מאקרו ארצי" },
+  { value: "buy", label: "📋 עסקאות מכר" },
+  { value: "rent", label: "🏠 שכירות" },
+  { value: "compare", label: "⚖️ השוואות" },
+  { value: "quality", label: "🚨 איכות נתונים" },
 ] as const;
+
+type TabValue = (typeof TABS)[number]["value"];
 
 export function NadlanDashboardApp() {
   const { data, error, loading } = useNadlanData();
-  const [tab, setTab] = useState<(typeof TABS)[number]["value"]>("overview");
+  const [tab, setTab] = useState<TabValue>("overview");
+
+  const subtitle = data
+    ? `${fmtNum(data.kpi.total_txns)} עסקאות מכר · ${fmtNum(data.cities.length)} ערים · ${fmtNum(data.rent_neighborhoods_geo.length)} שכונות שכירות · ${fmtNum(data.nbhs.length)} שכונות מכר · מפקד 2022`
+    : "פותח את הדאטה...";
 
   return (
-    <main className="page-shell mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10">
-      <header className="hero-panel mb-8 overflow-hidden p-8 text-white">
-        <p className="kicker text-white/80">נדל״ן · גרסה 2</p>
-        <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-          חוקר נדל״ן ישראל
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm text-white/75 sm:text-base">
-          {data
-            ? `${data.kpi.total_txns.toLocaleString("he-IL")} עסקאות מכר נקיות · ${data.cities.length} ערים מרכזיות · נתוני שכירות חודשיים`
-            : "טוען את מערך הנתונים הארצי..."}
-        </p>
+    <div className="dense-shell" style={{ padding: 12 }}>
+      <header className="dense-header">
+        <div>
+          <h1>🏠 נדל&quot;ן ישראל — דשבורד מקיף</h1>
+          <div className="dense-subtitle">{subtitle}</div>
+        </div>
+        <nav className="dense-tabnav">
+          {TABS.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              className={t.value === tab ? "active" : ""}
+              onClick={() => setTab(t.value)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
       </header>
 
-      {error ? (
-        <div className="surface-panel p-6 text-center text-rose-700">
-          שגיאה בטעינת הנתונים: {error.message}
-        </div>
-      ) : null}
-
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="space-y-6">
-        <TabsList className="flex h-auto w-full flex-wrap gap-2 bg-transparent p-0">
-          {TABS.map((t) => (
-            <TabsTrigger
-              key={t.value}
-              value={t.value}
-              className="surface-panel data-[state=active]:bg-[#0f766e] data-[state=active]:text-white px-4 py-2 text-sm font-medium"
-            >
-              <span className="me-2">{t.emoji}</span>
-              {t.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {loading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-32 rounded-3xl" />
-            ))}
-            <Skeleton className="col-span-full h-72 rounded-3xl" />
-            <Skeleton className="col-span-full h-72 rounded-3xl" />
+      <main>
+        {error ? (
+          <div className="dense-section" style={{ color: "#b91c1c" }}>
+            שגיאה בטעינת הנתונים: {error.message}
           </div>
-        ) : data ? (
+        ) : loading || !data ? (
+          <div className="dense-section">
+            <div className="dense-grid g-4">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-28 rounded-lg" />
+              ))}
+            </div>
+            <Skeleton className="mt-4 h-72 w-full rounded-lg" />
+          </div>
+        ) : (
           <>
-            <TabsContent value="overview">
-              <OverviewTab data={data} />
-            </TabsContent>
-            <TabsContent value="macro">
-              <MacroTab data={data} />
-            </TabsContent>
-            <TabsContent value="buy">
-              <BuyExplorerTab data={data} />
-            </TabsContent>
-            <TabsContent value="rent">
-              <RentalsTab data={data} />
-            </TabsContent>
-            <TabsContent value="compare">
-              <ComparisonsTab data={data} />
-            </TabsContent>
-            <TabsContent value="quality">
-              <QualityTab data={data} />
-            </TabsContent>
+            {tab === "overview" && <OverviewTab data={data} />}
+            {tab === "national" && <MacroTab data={data} />}
+            {tab === "buy" && <BuyExplorerTab data={data} />}
+            {tab === "rent" && <RentalsTab data={data} />}
+            {tab === "compare" && <ComparisonsTab data={data} />}
+            {tab === "quality" && <QualityTab data={data} />}
           </>
-        ) : null}
-      </Tabs>
-    </main>
+        )}
+      </main>
+    </div>
   );
 }

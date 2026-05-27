@@ -4,15 +4,6 @@ import { useMemo } from "react";
 import type { ChartData, ChartOptions } from "chart.js";
 
 import type { NadlanData } from "@/types/nadlan";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 import { ChartSurface, defaultChartOptions } from "../shared/chart-surface";
 import { fmtCurrency } from "../shared/formatters";
@@ -152,59 +143,59 @@ export function ComparisonsTab({ data }: Props) {
   }, [data.region]);
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 lg:grid-cols-2">
-        <ChartSurface
-          title='מחיר למ"ר מול תשואה'
-          subtitle="כל עיר = נקודה. תשואה גבוהה + מחיר נמוך = פינה אדומה"
-          type="scatter"
-          data={scatterChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
-          options={scatterOptions as ChartOptions<"line" | "bar" | "scatter" | "doughnut">}
-          height={420}
-        />
-        <ChartSurface
-          title="הרכב סוגי נכסים לפי שנה"
-          subtitle="אחוז מתוך סה״כ"
-          type="bar"
-          data={ptypeChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
-          options={ptypeOptions as ChartOptions<"line" | "bar" | "scatter" | "doughnut">}
-          height={420}
-        />
+    <>
+      <section className="dense-section">
+        <h2>📐 מחיר ↔ תשואה (Scatter)</h2>
+        <div className="sub">קשר הפוך: ככל שהמחיר גבוה - תשואת השכירות נמוכה</div>
+        <div className="dense-chart-box-xl">
+          <ChartSurface
+            title=""
+            type="scatter"
+            data={scatterChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
+            options={scatterOptions as ChartOptions<"line" | "bar" | "scatter" | "doughnut">}
+            height={370}
+          />
+        </div>
       </section>
 
-      <Card className="surface-panel border-0 shadow-none">
-        <CardContent className="p-5">
-          <h3 className="mb-4 text-lg font-semibold text-[#13202b]">
-            פער מרכז-פריפריה
-          </h3>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>שנה</TableHead>
-                <TableHead className="text-end">₪/מ"ר מרכז</TableHead>
-                <TableHead className="text-end">₪/מ"ר פריפריה</TableHead>
-                <TableHead className="text-end">פער (×)</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {gapRows.map((r) => (
-                <TableRow key={r.y}>
-                  <TableCell>{r.y}</TableCell>
-                  <TableCell className="text-end tabular-nums">
-                    {fmtCurrency(r.center)}
-                  </TableCell>
-                  <TableCell className="text-end tabular-nums">
-                    {fmtCurrency(r.peri)}
-                  </TableCell>
-                  <TableCell className="text-end tabular-nums font-semibold text-rose-600">
-                    ×{r.gap.toFixed(2)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+      <section className="dense-section">
+        <h2>🏘️ סוג נכס לפי שנה (Stacked)</h2>
+        <div className="dense-chart-box-lg">
+          <ChartSurface
+            title=""
+            type="bar"
+            data={ptypeChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
+            options={ptypeOptions as ChartOptions<"line" | "bar" | "scatter" | "doughnut">}
+            height={330}
+          />
+        </div>
+      </section>
+
+      <section className="dense-section">
+        <h2>🏛️ פער מרכז-פריפריה לאורך זמן</h2>
+        <table className="dense-section-table">
+          <thead>
+            <tr>
+              <th>שנה</th>
+              <th>מרכז ₪/מ"ר</th>
+              <th>פריפריה ₪/מ"ר</th>
+              <th>פער</th>
+            </tr>
+          </thead>
+          <tbody>
+            {gapRows.map((r) => (
+              <tr key={r.y}>
+                <td>{r.y}</td>
+                <td className="num">{fmtCurrency(r.center)}</td>
+                <td className="num">{fmtCurrency(r.peri)}</td>
+                <td className="num">
+                  <span className="dense-pill bad">×{r.gap.toFixed(2)}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    </>
   );
 }

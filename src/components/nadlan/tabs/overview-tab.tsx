@@ -4,11 +4,14 @@ import { useMemo } from "react";
 import type { ChartData } from "chart.js";
 
 import type { NadlanData } from "@/types/nadlan";
-import { Card, CardContent } from "@/components/ui/card";
 
 import { ChartSurface, defaultChartOptions } from "../shared/chart-surface";
-import { KpiCard } from "../shared/kpi-card";
-import { fmtCurrency, fmtNum, preciseFormatter } from "../shared/formatters";
+import {
+  fmtCurrency,
+  fmtNum,
+  fmtSignedPct,
+  preciseFormatter,
+} from "../shared/formatters";
 
 const REGION_COLORS: Record<string, string> = {
   "מרכז": "#dc2626",
@@ -17,6 +20,40 @@ const REGION_COLORS: Record<string, string> = {
   "שפלה ויהודה": "#ea580c",
   "פריפריה": "#047857",
 };
+
+type KpiVariant = "" | "good" | "warn" | "bad";
+
+function Kpi({
+  label,
+  value,
+  detail,
+  yoy,
+  variant = "",
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  yoy?: number | null;
+  variant?: KpiVariant;
+}) {
+  return (
+    <div className={`dense-kpi${variant ? ` ${variant}` : ""}`}>
+      <div className="label">{label}</div>
+      <div className="value">{value}</div>
+      {(detail || yoy != null) && (
+        <div className="delta">
+          {yoy != null && (
+            <span className={yoy >= 0 ? "dense-yoy-pos" : "dense-yoy-neg"}>
+              {fmtSignedPct(yoy)}
+            </span>
+          )}
+          {yoy != null && detail ? " · " : null}
+          {detail}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type Props = { data: NadlanData };
 
@@ -89,131 +126,139 @@ export function OverviewTab({ data }: Props) {
     return { labels: yrs, datasets };
   }, [data.region]);
 
-  const priceOptions = useMemo(
-    () => ({
-      ...defaultChartOptions("line", true),
+  const priceOptions = useMemo(() => {
+    const base = defaultChartOptions("line", true);
+    return {
+      ...base,
       scales: {
-        x: defaultChartOptions("line").scales!.x,
+        x: base.scales!.x,
         y: {
-          ...defaultChartOptions("line").scales!.y,
+          ...base.scales!.y,
           ticks: {
             color: "#475569",
             callback: (v: number | string) => `${(Number(v) / 1_000_000).toFixed(1)}M`,
           },
         },
       },
-    }),
-    [],
-  );
+    };
+  }, []);
 
-  const volumeOptions = useMemo(() => defaultChartOptions("bar", false), []);
-
-  const regionOptions = useMemo(
-    () => ({
-      ...defaultChartOptions("line", true),
+  const regionOptions = useMemo(() => {
+    const base = defaultChartOptions("line", true);
+    return {
+      ...base,
       scales: {
-        x: defaultChartOptions("line").scales!.x,
+        x: base.scales!.x,
         y: {
-          ...defaultChartOptions("line").scales!.y,
+          ...base.scales!.y,
           ticks: {
             color: "#475569",
             callback: (v: number | string) => `${(Number(v) / 1000).toFixed(0)}K`,
           },
         },
       },
-    }),
-    [],
-  );
+    };
+  }, []);
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiCard
-          label="מחיר ממוצע"
-          value={fmtCurrency(k.avg12)}
-          detail="ב-12 חודשים"
-          yoy={k.avgYoy}
-          accent="linear-gradient(135deg, #dc2626 0%, #f97316 100%)"
-        />
-        <KpiCard
-          label="מחיר חציוני"
-          value={fmtCurrency(k.med12)}
-          detail="ב-12 חודשים"
-          yoy={k.medYoy}
-          accent="linear-gradient(135deg, #1e40af 0%, #2563eb 100%)"
-        />
-        <KpiCard
-          label='₪/מ"ר ארצי'
-          value={fmtCurrency(k.pps12)}
-          detail="ממוצע משוקלל"
-          yoy={k.ppsYoy}
-          accent="linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)"
-        />
-        <KpiCard
-          label="נפח עסקאות"
-          value={fmtNum(k.vol12)}
-          detail="ב-12 חודשים"
-          yoy={k.volYoy}
-          accent="linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)"
-        />
-        <KpiCard
-          label="תשואת שכירות"
-          value={avgYield != null ? `${preciseFormatter.format(avgYield)}%` : "-"}
-          detail="ברוטו שנתי, ממוצע ערים"
-          accent="linear-gradient(135deg, #047857 0%, #10b981 100%)"
-        />
-        <KpiCard
-          label="Affordability"
-          value={k.yrs2buy ? `${k.yrs2buy.toFixed(1)} שנים` : "-"}
-          detail="מחיר ÷ הכנסה ארצית"
-          accent="linear-gradient(135deg, #b45309 0%, #f59e0b 100%)"
-        />
+    <>
+      <section className="dense-section">
+        <h2>📌 סטטיסטיקות מפתח — 12 חודשים אחרונים</h2>
+        <div className="dense-grid g-6">
+          <Kpi
+            label="מחיר ממוצע"
+            value={fmtCurrency(k.avg12)}
+            yoy={k.avgYoy}
+            detail="YoY"
+          />
+          <Kpi
+            label="מחיר חציוני"
+            value={fmtCurrency(k.med12)}
+            yoy={k.medYoy}
+            detail="YoY"
+          />
+          <Kpi
+            label='₪/מ"ר ארצי'
+            value={fmtCurrency(k.pps12)}
+            yoy={k.ppsYoy}
+            detail="YoY"
+          />
+          <Kpi
+            label="נפח עסקאות"
+            value={fmtNum(k.vol12)}
+            yoy={k.volYoy}
+            detail="YoY"
+          />
+          <Kpi
+            label="תשואת שכירות"
+            value={avgYield != null ? `${preciseFormatter.format(avgYield)}%` : "-"}
+            detail="ברוטו שנתי"
+            variant="good"
+          />
+          <Kpi
+            label="Affordability"
+            value={k.yrs2buy ? `${k.yrs2buy.toFixed(1)} שנים` : "-"}
+            detail="מחיר ÷ הכנסה"
+            variant="warn"
+          />
+        </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {data.insights.map((ins, i) => (
-          <Card key={i} className="surface-panel border-0 shadow-none">
-            <CardContent className="p-5">
-              <p className="flex items-center gap-2 text-sm font-semibold text-[#13202b]">
-                <span aria-hidden className="text-xl">
+      <section className="dense-section">
+        <h2>💡 תובנות מאקרו</h2>
+        <div className="dense-grid g-3">
+          {data.insights.map((ins, i) => (
+            <div key={i} className="dense-insight">
+              <div className="title">
+                <span aria-hidden style={{ marginInlineEnd: 6 }}>
                   {ins.i}
                 </span>
                 {ins.t}
-              </p>
-              <p
-                className="mt-2 text-sm text-[#5d6b7c]"
+              </div>
+              <div
+                className="body"
                 dangerouslySetInnerHTML={{ __html: ins.b }}
               />
-            </CardContent>
-          </Card>
-        ))}
+            </div>
+          ))}
+        </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <ChartSurface
-          title="מחיר ממוצע vs חציוני (₪)"
-          subtitle="מגמה שנתית"
-          type="line"
-          data={priceChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
-          options={priceOptions}
-        />
-        <ChartSurface
-          title="נפח עסקאות שנתי"
-          subtitle="כל הערים בכיסוי"
-          type="bar"
-          data={volumeChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
-          options={volumeOptions}
-        />
+      <section className="dense-section">
+        <h2>📈 מגמת מחיר ונפח (שנתי)</h2>
+        <div className="dense-grid g-2">
+          <div className="dense-chart-box-md">
+            <ChartSurface
+              title=""
+              type="line"
+              data={priceChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
+              options={priceOptions}
+              height={270}
+            />
+          </div>
+          <div className="dense-chart-box-md">
+            <ChartSurface
+              title=""
+              type="bar"
+              data={volumeChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
+              height={270}
+            />
+          </div>
+        </div>
       </section>
 
-      <ChartSurface
-        title="מגמת אזורים ארציים"
-        subtitle='₪/מ"ר לפי קבוצת אזור, שנתי'
-        type="line"
-        data={regionChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
-        options={regionOptions}
-        height={360}
-      />
-    </div>
+      <section className="dense-section">
+        <h2>🏛️ מרכז vs פריפריה — מגמה</h2>
+        <div className="dense-chart-box-lg">
+          <ChartSurface
+            title=""
+            type="line"
+            data={regionChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
+            options={regionOptions}
+            height={330}
+          />
+        </div>
+      </section>
+    </>
   );
 }

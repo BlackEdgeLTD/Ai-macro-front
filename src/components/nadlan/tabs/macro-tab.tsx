@@ -4,22 +4,6 @@ import { useMemo, useState } from "react";
 import type { ChartData, ChartOptions } from "chart.js";
 
 import type { NadlanData } from "@/types/nadlan";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 import { ChartSurface, defaultChartOptions } from "../shared/chart-surface";
 import { fmtCurrency, preciseFormatter } from "../shared/formatters";
@@ -235,97 +219,112 @@ export function MacroTab({ data }: Props) {
   const bot6 = data.afford.slice(-6).reverse();
 
   return (
-    <div className="space-y-6">
-      <ChartSurface
-        title="ערים מובילות לפי מדד"
-        subtitle="16 ערים בכיסוי, ממוין מהגבוה לנמוך"
-        type="bar"
-        data={cityChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
-        options={cityChartOptions as ChartOptions<"line" | "bar" | "scatter" | "doughnut">}
-        height={500}
-      >
-        <Select value={metric} onValueChange={(v) => v && setMetric(v as MetricKey)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
+    <>
+      <section className="dense-section">
+        <h2>🗺️ ערים מובילות לפי מדד</h2>
+        <div className="sub" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>16 ערים בכיסוי, ממוין מהגבוה לנמוך</span>
+          <select
+            value={metric}
+            onChange={(e) => setMetric(e.target.value as MetricKey)}
+            style={{
+              padding: "6px 10px",
+              border: "1px solid #e5e7eb",
+              borderRadius: 5,
+              fontSize: 13,
+              minWidth: 180,
+            }}
+          >
             {Object.entries(METRICS).map(([key, spec]) => (
-              <SelectItem key={key} value={key}>
+              <option key={key} value={key}>
                 {spec.label}
-              </SelectItem>
+              </option>
             ))}
-          </SelectContent>
-        </Select>
-      </ChartSurface>
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        <ChartSurface
-          title="תשואות שכירות — top 15"
-          subtitle="ברוטו שנתי, סודר מהגבוה"
-          type="bar"
-          data={yieldsChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
-          options={yieldsOptions as ChartOptions<"line" | "bar" | "scatter" | "doughnut">}
-          height={420}
-        />
-        <ChartSurface
-          title="ממוצע vs חציוני שנתי"
-          subtitle="לאומי"
-          type="line"
-          data={priceChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
-          options={priceOptions as ChartOptions<"line" | "bar" | "scatter" | "doughnut">}
-          height={420}
-        />
+          </select>
+        </div>
+        <div style={{ height: 500, position: "relative" }}>
+          <ChartSurface
+            title=""
+            type="bar"
+            data={cityChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
+            options={cityChartOptions as ChartOptions<"line" | "bar" | "scatter" | "doughnut">}
+            height={490}
+          />
+        </div>
       </section>
 
-      <Card className="surface-panel border-0 shadow-none">
-        <CardContent className="p-5">
-          <h3 className="mb-4 text-lg font-semibold text-[#13202b]">
-            נגישות לדיור (שנות הכנסה לרכישת דירה ממוצעת)
-          </h3>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>עיר</TableHead>
-                <TableHead className="text-end">שנים</TableHead>
-                <TableHead className="text-end">מחיר ממוצע</TableHead>
-                <TableHead className="text-end">הכנסה ארצית</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow className="bg-emerald-50/60">
-                <TableCell colSpan={4} className="text-center font-semibold text-emerald-700">
-                  — הכי נגישות —
-                </TableCell>
-              </TableRow>
-              {top6.map((a) => (
-                <TableRow key={`t-${a.n}`}>
-                  <TableCell>{a.n}</TableCell>
-                  <TableCell className="text-end tabular-nums font-semibold">
-                    {preciseFormatter.format(a.yr)}
-                  </TableCell>
-                  <TableCell className="text-end tabular-nums">{fmtCurrency(a.avg)}</TableCell>
-                  <TableCell className="text-end tabular-nums">{fmtCurrency(a.wage)}</TableCell>
-                </TableRow>
-              ))}
-              <TableRow className="bg-rose-50/60">
-                <TableCell colSpan={4} className="text-center font-semibold text-rose-700">
-                  — הכי לא נגישות —
-                </TableCell>
-              </TableRow>
-              {bot6.map((a) => (
-                <TableRow key={`b-${a.n}`}>
-                  <TableCell>{a.n}</TableCell>
-                  <TableCell className="text-end tabular-nums font-semibold">
-                    {preciseFormatter.format(a.yr)}
-                  </TableCell>
-                  <TableCell className="text-end tabular-nums">{fmtCurrency(a.avg)}</TableCell>
-                  <TableCell className="text-end tabular-nums">{fmtCurrency(a.wage)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+      <section className="dense-section">
+        <h2>📊 פילוחים והשוואות</h2>
+        <div className="dense-grid g-2">
+          <div>
+            <div className="dense-tabhead">תשואות שכירות — Top 15</div>
+            <div className="dense-chart-box-lg">
+              <ChartSurface
+                title=""
+                type="bar"
+                data={yieldsChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
+                options={yieldsOptions as ChartOptions<"line" | "bar" | "scatter" | "doughnut">}
+                height={330}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="dense-tabhead">ממוצע vs חציוני שנתי</div>
+            <div className="dense-chart-box-lg">
+              <ChartSurface
+                title=""
+                type="line"
+                data={priceChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
+                options={priceOptions as ChartOptions<"line" | "bar" | "scatter" | "doughnut">}
+                height={330}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="dense-section">
+        <h2>📐 Affordability — שנות הכנסה לרכישת דירה ממוצעת</h2>
+        <div className="sub">המחיר הממוצע בעיר, חלקי הכנסה ארצית ממוצעת</div>
+        <table className="dense-section-table">
+          <thead>
+            <tr>
+              <th>עיר</th>
+              <th>שנים</th>
+              <th>מחיר ממוצע</th>
+              <th>הכנסה ארצית</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="dense-section-header-row">
+              <td colSpan={4}>— הכי נגישות —</td>
+            </tr>
+            {top6.map((a) => (
+              <tr key={`t-${a.n}`}>
+                <td>{a.n}</td>
+                <td className="num" style={{ fontWeight: 600 }}>
+                  {preciseFormatter.format(a.yr)}
+                </td>
+                <td className="num">{fmtCurrency(a.avg)}</td>
+                <td className="num">{fmtCurrency(a.wage)}</td>
+              </tr>
+            ))}
+            <tr className="dense-section-header-row bad">
+              <td colSpan={4}>— הכי לא נגישות —</td>
+            </tr>
+            {bot6.map((a) => (
+              <tr key={`b-${a.n}`}>
+                <td>{a.n}</td>
+                <td className="num" style={{ fontWeight: 600 }}>
+                  {preciseFormatter.format(a.yr)}
+                </td>
+                <td className="num">{fmtCurrency(a.avg)}</td>
+                <td className="num">{fmtCurrency(a.wage)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    </>
   );
 }

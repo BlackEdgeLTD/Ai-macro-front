@@ -278,16 +278,10 @@ export function RentalsTab({ data }: Props) {
   }
 
   return (
-    <div className="dense-shell">
-      <header className="dense-header">
-        <div>
-          <h1>🏠 שכירות בישראל</h1>
-          <div className="dense-subtitle">22 חודשים אחרונים | מקור: nadlan.gov.il</div>
-        </div>
-        <div className="dense-count">
-          מציג: <strong>{numberFormatter.format(filtered.length)}</strong> שכונות
-        </div>
-      </header>
+    <>
+      <section className="dense-section">
+        <h2>🏠 שכירות בישראל — {numberFormatter.format(filtered.length)} שכונות</h2>
+        <div className="sub">22 חודשים אחרונים · מקור: nadlan.gov.il</div>
 
       <div className="dense-filters">
         <div className="filter-group">
@@ -454,12 +448,12 @@ export function RentalsTab({ data }: Props) {
         </div>
       </div>
 
-      <div className="dense-panel">
-        <div className="dense-panel-header">
-          טבלת שכירות לפי שכונה
-          <small>לחץ על כותרת עמודה למיון</small>
-        </div>
-        <div className="dense-table-wrapper">
+      </section>
+
+      <section className="dense-section">
+        <h2>טבלת שכירות לפי שכונה</h2>
+        <div className="sub">לחץ על כותרת עמודה למיון</div>
+        <div className="dense-table-wrapper" style={{ borderRadius: 8, border: "1px solid #e5e7eb" }}>
           <table className="dense-table">
             <thead>
               <tr>
@@ -542,8 +536,8 @@ export function RentalsTab({ data }: Props) {
             </span>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </>
   );
 }
 

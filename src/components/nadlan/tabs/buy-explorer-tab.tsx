@@ -230,186 +230,151 @@ export function BuyExplorerTab({ data }: Props) {
   ]);
 
   return (
-    <div className="dense-shell">
-      <header className="dense-header">
-        <div>
-          <h1>📋 סייר עסקאות מכר</h1>
-          <div className="dense-subtitle">
-            סנן לפי עיר, שכונה, סוג נכס, שנה, מחיר, חדרים. הטבלה והמפה מתעדכנות
-            יחד.
-          </div>
+    <>
+      <section className="dense-section">
+        <h2>📋 סייר עסקאות מכר — {fmtNum(data.txns.length)} עסקאות</h2>
+        <div className="sub">
+          סנן לפי עיר, שכונה, סוג נכס, שנה, מחיר, חדרים. הטבלה והמפה מתעדכנות יחד.
         </div>
-        <div className="dense-count">
-          סה״כ: <strong>{fmtNum(data.txns.length)}</strong> עסקאות
-        </div>
-      </header>
 
-      <div className="dense-filters">
-        <div className="filter-group">
-          <label>עיר</label>
-          <select
-            value={filters.cityIdx}
-            onChange={(e) => update("cityIdx", e.target.value)}
-          >
-            <option value="">הכל</option>
-            {data.cities.map((c, i) => (
-              <option key={i} value={String(i)}>
-                {c.n} ({fmtNum(c.cnt)})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="filter-group">
-          <label>שכונה</label>
-          <select
-            value={filters.nbhName}
-            disabled={filters.cityIdx === "" || cityNbhs.length === 0}
-            onChange={(e) => update("nbhName", e.target.value)}
-            style={{ minWidth: 160 }}
-          >
-            <option value="">
-              {filters.cityIdx === "" ? "בחר/י עיר תחילה" : "כל השכונות"}
-            </option>
-            {cityNbhs.map((n, i) => (
-              <option key={`${n.n}-${i}`} value={n.n}>
-                {n.n} ({fmtNum(n.cnt)})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="filter-group">
-          <label>סוג נכס</label>
-          <select
-            value={filters.ptypeIdx}
-            onChange={(e) => update("ptypeIdx", e.target.value)}
-          >
-            <option value="">הכל</option>
-            {data.ptypes.map((p, i) => (
-              <option key={i} value={String(i)}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="filter-group">
-          <label>שנה מ-</label>
-          <input
-            type="number"
-            placeholder="1998"
-            min={1998}
-            max={2026}
-            value={filters.yFrom}
-            onChange={(e) => update("yFrom", e.target.value)}
-            style={{ minWidth: 90 }}
-          />
-        </div>
-        <div className="filter-group">
-          <label>שנה עד-</label>
-          <input
-            type="number"
-            placeholder="2026"
-            min={1998}
-            max={2026}
-            value={filters.yTo}
-            onChange={(e) => update("yTo", e.target.value)}
-            style={{ minWidth: 90 }}
-          />
-        </div>
-        <div className="filter-group">
-          <label>מחיר מ- (אלפי ₪)</label>
-          <input
-            type="number"
-            placeholder="0"
-            value={filters.pFrom}
-            onChange={(e) => update("pFrom", e.target.value)}
-            style={{ minWidth: 110 }}
-          />
-        </div>
-        <div className="filter-group">
-          <label>מחיר עד-</label>
-          <input
-            type="number"
-            placeholder="∞"
-            value={filters.pTo}
-            onChange={(e) => update("pTo", e.target.value)}
-            style={{ minWidth: 110 }}
-          />
-        </div>
-        <div className="filter-group">
-          <label>חדרים</label>
-          <input
-            type="number"
-            step={0.5}
-            placeholder="כל"
-            value={filters.rooms}
-            onChange={(e) => update("rooms", e.target.value)}
-            style={{ minWidth: 80 }}
-          />
-        </div>
-        <div className="filter-group">
-          <label>&nbsp;</label>
-          <button type="button" className="dense-btn secondary" onClick={reset}>
-            איפוס
-          </button>
-        </div>
-        {stats && (
-          <div className="dense-filter-stats" style={{ marginInlineStart: "auto" }}>
-            {fmtNum(stats.count)} תוצאות · ממוצע ₪
-            {numberFormatter.format(stats.avgPriceK)}K · ₪
-            {numberFormatter.format(stats.avgPps)}/מ"ר
+        <div className="dense-filters" style={{ marginBottom: 14 }}>
+          <div className="filter-group">
+            <label>עיר</label>
+            <select
+              value={filters.cityIdx}
+              onChange={(e) => update("cityIdx", e.target.value)}
+            >
+              <option value="">הכל</option>
+              {data.cities.map((c, i) => (
+                <option key={i} value={String(i)}>
+                  {c.n} ({fmtNum(c.cnt)})
+                </option>
+              ))}
+            </select>
           </div>
-        )}
-      </div>
+          <div className="filter-group">
+            <label>שכונה</label>
+            <select
+              value={filters.nbhName}
+              disabled={filters.cityIdx === "" || cityNbhs.length === 0}
+              onChange={(e) => update("nbhName", e.target.value)}
+              style={{ minWidth: 160 }}
+            >
+              <option value="">
+                {filters.cityIdx === "" ? "בחר/י עיר תחילה" : "כל השכונות"}
+              </option>
+              {cityNbhs.map((n, i) => (
+                <option key={`${n.n}-${i}`} value={n.n}>
+                  {n.n} ({fmtNum(n.cnt)})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-group">
+            <label>סוג נכס</label>
+            <select
+              value={filters.ptypeIdx}
+              onChange={(e) => update("ptypeIdx", e.target.value)}
+            >
+              <option value="">הכל</option>
+              {data.ptypes.map((p, i) => (
+                <option key={i} value={String(i)}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-group">
+            <label>שנה מ-</label>
+            <input
+              type="number"
+              placeholder="1998"
+              min={1998}
+              max={2026}
+              value={filters.yFrom}
+              onChange={(e) => update("yFrom", e.target.value)}
+              style={{ minWidth: 90 }}
+            />
+          </div>
+          <div className="filter-group">
+            <label>שנה עד-</label>
+            <input
+              type="number"
+              placeholder="2026"
+              min={1998}
+              max={2026}
+              value={filters.yTo}
+              onChange={(e) => update("yTo", e.target.value)}
+              style={{ minWidth: 90 }}
+            />
+          </div>
+          <div className="filter-group">
+            <label>מחיר מ- (אלפי ₪)</label>
+            <input
+              type="number"
+              placeholder="0"
+              value={filters.pFrom}
+              onChange={(e) => update("pFrom", e.target.value)}
+              style={{ minWidth: 110 }}
+            />
+          </div>
+          <div className="filter-group">
+            <label>מחיר עד-</label>
+            <input
+              type="number"
+              placeholder="∞"
+              value={filters.pTo}
+              onChange={(e) => update("pTo", e.target.value)}
+              style={{ minWidth: 110 }}
+            />
+          </div>
+          <div className="filter-group">
+            <label>חדרים</label>
+            <input
+              type="number"
+              step={0.5}
+              placeholder="כל"
+              value={filters.rooms}
+              onChange={(e) => update("rooms", e.target.value)}
+              style={{ minWidth: 80 }}
+            />
+          </div>
+          <div className="filter-group">
+            <label>&nbsp;</label>
+            <button type="button" className="dense-btn secondary" onClick={reset}>
+              איפוס
+            </button>
+          </div>
+          {stats && (
+            <div className="dense-filter-stats" style={{ marginInlineStart: "auto" }}>
+              {fmtNum(stats.count)} תוצאות · ממוצע ₪
+              {numberFormatter.format(stats.avgPriceK)}K · ₪
+              {numberFormatter.format(stats.avgPps)}/מ"ר
+            </div>
+          )}
+        </div>
 
-      <div className="dense-grid-2">
-        <div className="dense-panel">
-          <div className="dense-panel-header">
-            נפח עסקאות לפי שנה
-            <small>מסונן</small>
-          </div>
-          <div className="dense-chart-box">
+        <div className="dense-grid g-2" style={{ marginBottom: 14 }}>
+          <div className="dense-chart-box-md">
             <ChartSurface
               title=""
               type="bar"
-              data={
-                yearlyChart as ChartData<
-                  "line" | "bar" | "scatter" | "doughnut"
-                >
-              }
-              height={210}
+              data={yearlyChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
+              height={260}
             />
           </div>
-        </div>
-        <div className="dense-panel">
-          <div className="dense-panel-header">
-            פיזור לפי עיר (Top 10)
-            <small>מסונן</small>
-          </div>
-          <div className="dense-chart-box">
+          <div className="dense-chart-box-md">
             <ChartSurface
               title=""
               type="bar"
               data={cityChart as ChartData<"line" | "bar" | "scatter" | "doughnut">}
-              options={
-                cityChartOptions as ChartOptions<
-                  "line" | "bar" | "scatter" | "doughnut"
-                >
-              }
-              height={210}
+              options={cityChartOptions as ChartOptions<"line" | "bar" | "scatter" | "doughnut">}
+              height={260}
             />
           </div>
         </div>
-      </div>
 
-      <div className="dense-panel">
-        <div className="dense-panel-header">
-          טבלת עסקאות
-          <small>לחץ על כותרת עמודה למיון</small>
-        </div>
-        <div
-          className="dense-table-wrapper"
-          style={{ maxHeight: 520 }}
-        >
+        <div className="dense-table-wrapper" style={{ maxHeight: 520, borderRadius: 8, border: "1px solid #e5e7eb" }}>
           <table className="dense-table dense-txn-table">
             <thead>
               <tr>
@@ -439,10 +404,7 @@ export function BuyExplorerTab({ data }: Props) {
             <tbody>
               {pageRows.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={7}
-                    style={{ textAlign: "center", color: "#6b7280", padding: 20 }}
-                  >
+                  <td colSpan={7} style={{ textAlign: "center", color: "#6b7280", padding: 20 }}>
                     אין עסקאות תואמות
                   </td>
                 </tr>
@@ -454,9 +416,7 @@ export function BuyExplorerTab({ data }: Props) {
                     <td>{data.ptypes[t[2]] ?? "-"}</td>
                     <td className="num">{t[3]}</td>
                     <td className="num">{t[4] || "-"}</td>
-                    <td className="num">
-                      ₪{numberFormatter.format(t[5])}K
-                    </td>
+                    <td className="num">₪{numberFormatter.format(t[5])}K</td>
                     <td className="num">{fmtCurrency(t[6])}</td>
                   </tr>
                 ))
@@ -464,90 +424,50 @@ export function BuyExplorerTab({ data }: Props) {
             </tbody>
           </table>
         </div>
-        <div className="dense-table-footer">
-          <div className="dense-pagination">
-            <button
-              type="button"
-              disabled={safePage === 1}
-              onClick={() => setPage(1)}
-            >
-              ‹‹
-            </button>
-            <button
-              type="button"
-              disabled={safePage === 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              ‹ הקודם
-            </button>
-            <span style={{ margin: "0 8px" }}>
-              דף {safePage} / {totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={safePage === totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            >
-              הבא ›
-            </button>
-            <button
-              type="button"
-              disabled={safePage === totalPages}
-              onClick={() => setPage(totalPages)}
-            >
-              ››
-            </button>
+        <div className="dense-pagination" style={{ display: "flex", gap: 4, justifyContent: "space-between", alignItems: "center", padding: "12px 4px 0", fontSize: 12 }}>
+          <div>
+            <button type="button" disabled={safePage === 1} onClick={() => setPage(1)}>‹‹</button>
+            <button type="button" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹ הקודם</button>
+            <span style={{ margin: "0 8px" }}>דף {safePage} / {totalPages}</span>
+            <button type="button" disabled={safePage === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>הבא ›</button>
+            <button type="button" disabled={safePage === totalPages} onClick={() => setPage(totalPages)}>››</button>
           </div>
           <div>
             הצג:{" "}
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              style={{
-                padding: "3px 8px",
-                fontSize: 12,
-                border: "1px solid #e5e7eb",
-                borderRadius: 4,
-              }}
+              style={{ padding: "3px 8px", fontSize: 12, border: "1px solid #e5e7eb", borderRadius: 4 }}
             >
               {PAGE_SIZE_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
+                <option key={s} value={s}>{s}</option>
               ))}
             </select>
-            <span style={{ marginInlineStart: 12, color: "#6b7280" }}>
-              {fmtNum(filtered.length)} עסקאות
-            </span>
+            <span style={{ marginInlineStart: 12, color: "#6b7280" }}>{fmtNum(filtered.length)} עסקאות</span>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="dense-panel">
-        <div className="dense-panel-header">
-          מפת שכונות (אגרגציה לפי שכונה)
-          <small>
-            מבוסס על {data.nbhs.length} שכונות עם 15+ עסקאות. גודל = √עסקאות,
-            צבע = ₪/מ"ר
-          </small>
+      <section className="dense-section">
+        <h2>🗺️ מפת שכונות (אגרגציה לפי שכונה)</h2>
+        <div className="sub">
+          מבוסס על {fmtNum(data.nbhs.length)} שכונות עם 15+ עסקאות מאז 2022. גודל = √(עסקאות), צבע = ₪/מ"ר
         </div>
         <NeighborhoodsMap nbhs={data.nbhs} cities={data.cities} />
-      </div>
+      </section>
 
-      <div className="dense-panel">
-        <div className="dense-panel-header">
-          <div>
-            שכונות
-            <small style={{ marginInlineStart: 8 }}>
-              {filters.nbhName
-                ? `שכונה: ${filters.nbhName}`
-                : filters.cityIdx
-                  ? `שכונות ב-${data.cities[Number(filters.cityIdx)]?.n}`
-                  : "כל השכונות בכיסוי"}
-              {" · "}
-              {fmtNum(nbhRows.length)} תוצאות
-            </small>
-          </div>
+      <section className="dense-section">
+        <h2>🏘️ שכונות</h2>
+        <div className="sub" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <span>
+            {filters.nbhName
+              ? `שכונה: ${filters.nbhName}`
+              : filters.cityIdx
+                ? `שכונות ב-${data.cities[Number(filters.cityIdx)]?.n}`
+                : "כל השכונות בכיסוי"}
+            {" · "}
+            {fmtNum(nbhRows.length)} תוצאות
+          </span>
           <input
             type="text"
             placeholder="חיפוש שכונה..."
@@ -562,40 +482,23 @@ export function BuyExplorerTab({ data }: Props) {
             }}
           />
         </div>
-        <div className="dense-table-wrapper" style={{ maxHeight: 420 }}>
+        <div className="dense-table-wrapper" style={{ maxHeight: 420, borderRadius: 8, border: "1px solid #e5e7eb" }}>
           <table className="dense-table">
             <thead>
               <tr>
-                <NbhTh col="n" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>
-                  שכונה
-                </NbhTh>
-                <NbhTh col="city" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>
-                  עיר
-                </NbhTh>
-                <NbhTh col="cnt" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>
-                  עסקאות
-                </NbhTh>
-                <NbhTh col="avg" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>
-                  מחיר ממוצע
-                </NbhTh>
-                <NbhTh col="pps" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>
-                  ₪/מ"ר
-                </NbhTh>
-                <NbhTh col="sqm" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>
-                  מ"ר ממוצע
-                </NbhTh>
-                <NbhTh col="r" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>
-                  חדרים
-                </NbhTh>
+                <NbhTh col="n" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>שכונה</NbhTh>
+                <NbhTh col="city" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>עיר</NbhTh>
+                <NbhTh col="cnt" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>עסקאות</NbhTh>
+                <NbhTh col="avg" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>מחיר ממוצע</NbhTh>
+                <NbhTh col="pps" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>₪/מ"ר</NbhTh>
+                <NbhTh col="sqm" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>מ"ר ממוצע</NbhTh>
+                <NbhTh col="r" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>חדרים</NbhTh>
               </tr>
             </thead>
             <tbody>
               {nbhRows.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={7}
-                    style={{ textAlign: "center", color: "#6b7280", padding: 20 }}
-                  >
+                  <td colSpan={7} style={{ textAlign: "center", color: "#6b7280", padding: 20 }}>
                     אין שכונות תואמות
                   </td>
                 </tr>
@@ -606,9 +509,7 @@ export function BuyExplorerTab({ data }: Props) {
                     <td>{data.cities[n.c]?.n ?? "?"}</td>
                     <td className="num">{fmtNum(n.cnt)}</td>
                     <td className="num">{fmtCurrency(n.avg)}</td>
-                    <td className="num" style={{ fontWeight: 600 }}>
-                      {fmtCurrency(n.pps)}
-                    </td>
+                    <td className="num" style={{ fontWeight: 600 }}>{fmtCurrency(n.pps)}</td>
                     <td className="num">{n.sqm}</td>
                     <td className="num">{n.r}</td>
                   </tr>
@@ -617,12 +518,12 @@ export function BuyExplorerTab({ data }: Props) {
             </tbody>
           </table>
         </div>
-      </div>
-    </div>
+      </section>
+    </>
   );
 }
 
-type TxnThProps<TCol extends string> = {
+type ThProps<TCol extends string> = {
   col: TCol;
   current: TCol;
   dir: -1 | 1;
@@ -630,26 +531,20 @@ type TxnThProps<TCol extends string> = {
   children: React.ReactNode;
 };
 
-function TxnTh({ col, current, dir, onClick, children }: TxnThProps<SortCol>) {
+function TxnTh({ col, current, dir, onClick, children }: ThProps<SortCol>) {
   const active = col === current;
   return (
-    <th
-      onClick={() => onClick(col)}
-      style={{ cursor: "pointer", userSelect: "none" }}
-    >
+    <th onClick={() => onClick(col)} style={{ cursor: "pointer", userSelect: "none" }}>
       {children}
       {active ? <span aria-hidden> {dir === -1 ? "▾" : "▴"}</span> : null}
     </th>
   );
 }
 
-function NbhTh({ col, current, dir, onClick, children }: TxnThProps<NbhSortCol>) {
+function NbhTh({ col, current, dir, onClick, children }: ThProps<NbhSortCol>) {
   const active = col === current;
   return (
-    <th
-      onClick={() => onClick(col)}
-      style={{ cursor: "pointer", userSelect: "none" }}
-    >
+    <th onClick={() => onClick(col)} style={{ cursor: "pointer", userSelect: "none" }}>
       {children}
       {active ? <span aria-hidden> {dir === -1 ? "▾" : "▴"}</span> : null}
     </th>
