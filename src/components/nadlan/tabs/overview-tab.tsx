@@ -178,7 +178,7 @@ export function OverviewTab({ data }: Props) {
             detail="YoY"
           />
           <Kpi
-            label='₪/מ"ר ארצי'
+            label='₪/מ״ר ארצי'
             value={fmtCurrency(k.pps12)}
             yoy={k.ppsYoy}
             detail="YoY"

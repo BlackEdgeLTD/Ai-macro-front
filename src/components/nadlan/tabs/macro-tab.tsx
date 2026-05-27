@@ -15,7 +15,7 @@ const METRICS: Record<
   { label: string; fmt: (v: number) => string; rev: boolean }
 > = {
   pps: {
-    label: '₪/מ"ר',
+    label: '₪/מ״ר',
     fmt: (v) => "₪" + Math.round(v).toLocaleString("he-IL"),
     rev: false,
   },

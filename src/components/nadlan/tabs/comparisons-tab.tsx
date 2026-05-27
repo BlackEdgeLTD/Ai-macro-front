@@ -46,7 +46,7 @@ export function ComparisonsTab({ data }: Props) {
       scales: {
         x: {
           ...base.scales!.x,
-          title: { display: true, text: 'מחיר/מ"ר (₪)' },
+          title: { display: true, text: 'מחיר/מ״ר (₪)' },
           ticks: {
             ...(base.scales!.x as { ticks?: object }).ticks,
             callback: (v) => (Number(v) / 1000).toFixed(0) + "K",
@@ -68,7 +68,7 @@ export function ComparisonsTab({ data }: Props) {
           callbacks: {
             label: (ctx) => {
               const p = ctx.raw as { x: number; y: number };
-              return `${cityNames[ctx.dataIndex]}: ${p.y.toFixed(2)}% @ ${fmtCurrency(p.x)}/מ"ר`;
+              return `${cityNames[ctx.dataIndex]}: ${p.y.toFixed(2)}% @ ${fmtCurrency(p.x)}/מ״ר`;
             },
           },
         },
@@ -177,8 +177,8 @@ export function ComparisonsTab({ data }: Props) {
           <thead>
             <tr>
               <th>שנה</th>
-              <th>מרכז ₪/מ"ר</th>
-              <th>פריפריה ₪/מ"ר</th>
+              <th>מרכז ₪/מ״ר</th>
+              <th>פריפריה ₪/מ״ר</th>
               <th>פער</th>
             </tr>
           </thead>

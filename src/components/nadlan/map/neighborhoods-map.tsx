@@ -17,6 +17,27 @@ function colorScale(v: number, lo: number, hi: number): string {
   return `rgb(${r},${g},${b})`;
 }
 
+function strHash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+// mulberry32 — deterministic, well-distributed PRNG. Same seed -> same sequence,
+// so a given neighborhood always lands at the same jittered position.
+function seededRng(seed: number): () => number {
+  let a = seed | 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 type Props = {
   nbhs: Neighborhood[];
   cities: City[];
@@ -59,15 +80,17 @@ export default function NeighborhoodsMap({ nbhs, cities }: Props) {
     if (!ppss.length) return [];
     const lo = Math.min(...ppss);
     const hi = Math.max(...ppss);
-    // Random jitter — computed once per data load and cached by useMemo so
-    // markers stay anchored across re-renders. Matches the source HTML's
-    // (Math.random() - 0.5) * 0.04 spread (~±2km around the city centre).
+    // Seeded jitter — same neighborhood always lands at the same spot, but
+    // mulberry32's distribution is much more uniform than the source's
+    // Math.random()*0.04 (which also produces a ~±2km spread around the city
+    // centre, but isn't repeatable).
     return nbhs
       .map((n) => {
         const city = cities[n.c];
         if (!city || city.lat == null) return null;
-        const jit1 = (Math.random() - 0.5) * 0.04;
-        const jit2 = (Math.random() - 0.5) * 0.04;
+        const rng = seededRng(strHash(`${n.n}|${n.c}`));
+        const jit1 = (rng() - 0.5) * 0.04;
+        const jit2 = (rng() - 0.5) * 0.04;
         return {
           n,
           city,
@@ -99,8 +122,8 @@ export default function NeighborhoodsMap({ nbhs, cities }: Props) {
           <div class="row"><span>עיר:</span><b>${city.n}</b></div>
           <div class="row"><span>עסקאות:</span><b>${fmtNum(n.cnt)}</b></div>
           <div class="row"><span>מחיר ממוצע:</span><b>${fmtCurrency(n.avg)}</b></div>
-          <div class="row"><span>₪/מ"ר:</span><b>${fmtCurrency(n.pps)}</b></div>
-          <div class="row"><span>מ"ר ממוצע:</span><b>${n.sqm}</b></div>
+          <div class="row"><span>₪/מ״ר:</span><b>${fmtCurrency(n.pps)}</b></div>
+          <div class="row"><span>מ״ר ממוצע:</span><b>${n.sqm}</b></div>
           <div class="row"><span>חדרים ממוצע:</span><b>${n.r}</b></div>
         </div>`,
       );

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ChartData, ChartOptions } from "chart.js";
 
 import type { NadlanData, TxnRow } from "@/types/nadlan";
@@ -100,8 +100,6 @@ export function BuyExplorerTab({ data }: Props) {
   const safePage = Math.min(page, totalPages);
   const pageRows = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  useEffect(() => setPage(1), [filters, pageSize]);
-
   const stats = useMemo(() => {
     if (!filtered.length) return null;
     const sumP = filtered.reduce((s, t) => s + t[5], 0);
@@ -178,10 +176,12 @@ export function BuyExplorerTab({ data }: Props) {
       if (key === "cityIdx") next.nbhName = "";
       return next;
     });
+    setPage(1);
   }
 
   function reset() {
     setFilters(EMPTY);
+    setPage(1);
   }
 
   function onSort(col: SortCol) {
@@ -349,7 +349,7 @@ export function BuyExplorerTab({ data }: Props) {
             <div className="dense-filter-stats" style={{ marginInlineStart: "auto" }}>
               {fmtNum(stats.count)} תוצאות · ממוצע ₪
               {numberFormatter.format(stats.avgPriceK)}K · ₪
-              {numberFormatter.format(stats.avgPps)}/מ"ר
+              {numberFormatter.format(stats.avgPps)}/מ״ר
             </div>
           )}
         </div>
@@ -388,7 +388,7 @@ export function BuyExplorerTab({ data }: Props) {
                   סוג
                 </TxnTh>
                 <TxnTh col="sqm" current={sortCol} dir={sortDir} onClick={onSort}>
-                  מ"ר
+                  מ״ר
                 </TxnTh>
                 <TxnTh col="rooms" current={sortCol} dir={sortDir} onClick={onSort}>
                   חד׳
@@ -397,7 +397,7 @@ export function BuyExplorerTab({ data }: Props) {
                   מחיר
                 </TxnTh>
                 <TxnTh col="pps" current={sortCol} dir={sortDir} onClick={onSort}>
-                  ₪/מ"ר
+                  ₪/מ״ר
                 </TxnTh>
               </tr>
             </thead>
@@ -436,7 +436,10 @@ export function BuyExplorerTab({ data }: Props) {
             הצג:{" "}
             <select
               value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(1);
+              }}
               style={{ padding: "3px 8px", fontSize: 12, border: "1px solid #e5e7eb", borderRadius: 4 }}
             >
               {PAGE_SIZE_OPTIONS.map((s) => (
@@ -451,7 +454,7 @@ export function BuyExplorerTab({ data }: Props) {
       <section className="dense-section">
         <h2>🗺️ מפת שכונות (אגרגציה לפי שכונה)</h2>
         <div className="sub">
-          מבוסס על {fmtNum(data.nbhs.length)} שכונות עם 15+ עסקאות מאז 2022. גודל = √(עסקאות), צבע = ₪/מ"ר
+          מבוסס על {fmtNum(data.nbhs.length)} שכונות עם 15+ עסקאות מאז 2022. גודל = √(עסקאות), צבע = ₪/מ״ר
         </div>
         <NeighborhoodsMap nbhs={data.nbhs} cities={data.cities} />
       </section>
@@ -490,8 +493,8 @@ export function BuyExplorerTab({ data }: Props) {
                 <NbhTh col="city" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>עיר</NbhTh>
                 <NbhTh col="cnt" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>עסקאות</NbhTh>
                 <NbhTh col="avg" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>מחיר ממוצע</NbhTh>
-                <NbhTh col="pps" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>₪/מ"ר</NbhTh>
-                <NbhTh col="sqm" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>מ"ר ממוצע</NbhTh>
+                <NbhTh col="pps" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>₪/מ״ר</NbhTh>
+                <NbhTh col="sqm" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>מ״ר ממוצע</NbhTh>
                 <NbhTh col="r" current={nbhSortCol} dir={nbhSortDir} onClick={onNbhSort}>חדרים</NbhTh>
               </tr>
             </thead>

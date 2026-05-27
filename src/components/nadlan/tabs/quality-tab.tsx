@@ -29,8 +29,8 @@ export function QualityTab({ data }: Props) {
       list.push({
         kind: "warn",
         emoji: "⚠️",
-        title: `${fmtNum(q.high_pps)} עסקאות עם ₪/מ"ר > 200,000`,
-        body: 'לרוב קרקעות שדווחו עם "1 מ"ר". סוננו.',
+        title: `${fmtNum(q.high_pps)} עסקאות עם ₪/מ״ר > 200,000`,
+        body: 'לרוב קרקעות שדווחו עם "1 מ״ר". סוננו.',
       });
     }
     if (q.low_price > 0) {
@@ -69,7 +69,7 @@ export function QualityTab({ data }: Props) {
         </div>
         <div className="dense-grid g-4" style={{ marginTop: 12 }}>
           <div className="dense-kpi">
-            <div className="label">סה"כ עסקאות</div>
+            <div className="label">סה״כ עסקאות</div>
             <div className="value">{fmtNum(q.total)}</div>
           </div>
           <div className="dense-kpi good">
@@ -83,7 +83,7 @@ export function QualityTab({ data }: Props) {
             <div className="delta">עתידי + ₪/מ״ר גבוה + מחיר נמוך</div>
           </div>
           <div className="dense-kpi warn">
-            <div className="label">שטח &gt; 1,000 מ"ר</div>
+            <div className="label">שטח &gt; 1,000 מ״ר</div>
             <div className="value">{fmtNum(q.huge_area)}</div>
             <div className="delta">חריגי שטח שהושארו</div>
           </div>
@@ -91,8 +91,8 @@ export function QualityTab({ data }: Props) {
       </section>
 
       <section className="dense-section">
-        <h2>🔍 חריגים מובילים (₪/מ"ר &gt; 200K)</h2>
-        <div className="sub">לרוב קרקעות שדווחו כ-"1 מ"ר" - יוצרים מחירים אבסורדיים</div>
+        <h2>🔍 חריגים מובילים (₪/מ״ר &gt; 200K)</h2>
+        <div className="sub">לרוב קרקעות שדווחו כ-&ldquo;1 מ״ר&rdquo; - יוצרים מחירים אבסורדיים</div>
         <div style={{ maxHeight: 480, overflow: "auto", borderRadius: 8, border: "1px solid #e5e7eb" }}>
           <table className="dense-section-table">
             <thead>
@@ -103,7 +103,7 @@ export function QualityTab({ data }: Props) {
                 <th>סוג</th>
                 <th>שטח</th>
                 <th>מחיר</th>
-                <th>₪/מ"ר</th>
+                <th>₪/מ״ר</th>
               </tr>
             </thead>
             <tbody>

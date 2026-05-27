@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ChartData, ChartOptions } from "chart.js";
 
 import type {
@@ -85,8 +85,6 @@ export function RentalsTab({ data }: Props) {
       return true;
     });
   }, [data.rent_neighborhoods_geo, settlement, search, priceMin, priceMax]);
-
-  useEffect(() => setPage(1), [settlement, search, priceMin, priceMax]);
 
   const stats = useMemo(() => {
     const prices = filtered.map((n) => n.price).filter((p): p is number => p != null);
@@ -242,7 +240,13 @@ export function RentalsTab({ data }: Props) {
     setSearch("");
     setPriceMin("");
     setPriceMax("");
+    setPage(1);
   }
+
+  function updateSettlement(v: string) { setSettlement(v); setPage(1); }
+  function updateSearch(v: string) { setSearch(v); setPage(1); }
+  function updatePriceMin(v: string) { setPriceMin(v); setPage(1); }
+  function updatePriceMax(v: string) { setPriceMax(v); setPage(1); }
 
   function onSort(k: SortKey) {
     if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -303,7 +307,7 @@ export function RentalsTab({ data }: Props) {
           <label>יישוב</label>
           <select
             value={settlement}
-            onChange={(e) => setSettlement(e.target.value)}
+            onChange={(e) => updateSettlement(e.target.value)}
           >
             <option value="">הכל</option>
             {settlements.map((s) => (
@@ -319,7 +323,7 @@ export function RentalsTab({ data }: Props) {
             type="text"
             placeholder="שם שכונה..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => updateSearch(e.target.value)}
             style={{ minWidth: 180 }}
           />
         </div>
@@ -330,7 +334,7 @@ export function RentalsTab({ data }: Props) {
             step={500}
             placeholder="0"
             value={priceMin}
-            onChange={(e) => setPriceMin(e.target.value)}
+            onChange={(e) => updatePriceMin(e.target.value)}
           />
         </div>
         <div className="filter-group">
@@ -340,7 +344,7 @@ export function RentalsTab({ data }: Props) {
             step={500}
             placeholder="∞"
             value={priceMax}
-            onChange={(e) => setPriceMax(e.target.value)}
+            onChange={(e) => updatePriceMax(e.target.value)}
           />
         </div>
         <div className="filter-group">
