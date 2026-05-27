@@ -1,0 +1,1043 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>נדל"ן ישראל - מאקרו דשבורד</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root {
+  --bg: #f3f5f9; --panel: #fff; --primary: #1e40af; --primary-light: #3b82f6;
+  --green: #047857; --orange: #ea580c; --red: #dc2626; --yellow: #ca8a04;
+  --text: #1f2937; --text-light: #6b7280; --border: #e5e7eb;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06); --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+}
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); }
+
+header {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: white; padding: 16px 24px; box-shadow: var(--shadow-lg);
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+}
+header h1 { margin:0; font-size: 24px; font-weight: 700; }
+header .subtitle { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+header a { color: white; text-decoration: none; background: rgba(255,255,255,0.18); padding: 7px 14px; border-radius: 5px; margin-left: 6px; font-size: 13px; transition: background 0.2s; }
+header a:hover { background: rgba(255,255,255,0.32); }
+
+main { padding: 20px; max-width: 1600px; margin: 0 auto; display: grid; gap: 16px; }
+
+.section {
+  background: var(--panel); border-radius: 10px; padding: 18px 22px; box-shadow: var(--shadow);
+}
+.section h2 { margin: 0 0 4px; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.section .sub { color: var(--text-light); font-size: 12px; margin-bottom: 14px; }
+
+.grid { display: grid; gap: 12px; }
+.g-4 { grid-template-columns: repeat(4, 1fr); }
+.g-3 { grid-template-columns: repeat(3, 1fr); }
+.g-2 { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 980px) { .g-4 { grid-template-columns: repeat(2,1fr); } .g-3 { grid-template-columns: 1fr; } .g-2 { grid-template-columns: 1fr; } }
+
+.kpi { padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: linear-gradient(135deg, #fafbfc, white); }
+.kpi .label { font-size: 11px; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+.kpi .value { font-size: 22px; font-weight: 700; color: var(--primary); margin-top: 4px; }
+.kpi .delta { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+.kpi.warn { background: linear-gradient(135deg, #fff7ed, white); border-color: #fed7aa; }
+.kpi.warn .value { color: var(--orange); }
+.kpi.bad { background: linear-gradient(135deg, #fef2f2, white); border-color: #fecaca; }
+.kpi.bad .value { color: var(--red); }
+.kpi.good { background: linear-gradient(135deg, #f0fdf4, white); border-color: #bbf7d0; }
+.kpi.good .value { color: var(--green); }
+
+.chart-box { height: 280px; position: relative; }
+
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+th, td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+th { background: #fafbfc; font-weight: 700; position: sticky; top: 0; }
+tr:hover { background: #fafbfc; }
+td.num { font-variant-numeric: tabular-nums; }
+.bar-cell { position: relative; padding-right: 8px; }
+.bar-cell .bar { position: absolute; right: 0; top: 8px; height: 60%; background: rgba(59,130,246,0.18); border-radius: 2px; z-index: 0; }
+.bar-cell .num { position: relative; z-index: 1; font-variant-numeric: tabular-nums; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.pill-bad { background: #fef2f2; color: var(--red); }
+.pill-warn { background: #fff7ed; color: var(--orange); }
+.pill-good { background: #f0fdf4; color: var(--green); }
+
+.alert { padding: 12px 16px; border-radius: 8px; margin: 6px 0; display: flex; align-items: start; gap: 12px; font-size: 13.5px; }
+.alert-warn { background: #fff7ed; border-right: 4px solid var(--orange); color: #7c2d12; }
+.alert-bad  { background: #fef2f2; border-right: 4px solid var(--red);    color: #7f1d1d; }
+.alert-info { background: #eff6ff; border-right: 4px solid var(--primary-light); color: #1e3a8a; }
+.alert .icon { font-size: 18px; flex-shrink: 0; }
+.alert strong { display: block; margin-bottom: 2px; font-size: 14px; }
+
+.insight { padding: 14px 16px; border-radius: 8px; background: #fafbfc; border: 1px solid var(--border); }
+.insight .title { font-weight: 700; margin-bottom: 6px; font-size: 13px; }
+.insight .body { font-size: 12.5px; color: var(--text-light); line-height: 1.5; }
+.insight strong { color: var(--primary); font-weight: 700; }
+
+.loader { position: fixed; inset: 0; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; z-index: 9999; }
+.spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; background: rgba(255,255,255,0.12); padding: 4px; border-radius: 8px; }
+.tabs button { background: transparent; color: white; border: none; padding: 8px 16px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.tabs button:hover { background: rgba(255,255,255,0.15); }
+.tabs button.active { background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Heatmap */
+.map-wrap { position: relative; }
+#hmap { height: 560px; border-radius: 8px; }
+.map-controls { position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 10px 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
+.map-controls label { font-size: 12px; font-weight: 600; }
+.map-controls select { width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; font-family: inherit; font-size: 12px; }
+.map-legend { font-size: 11px; color: var(--text-light); padding-top: 6px; border-top: 1px solid var(--border); }
+.map-legend .row { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+.map-legend .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.2); }
+.leaflet-popup-content { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12.5px; direction: rtl; min-width: 200px; }
+.leaflet-popup-content b { color: var(--primary); }
+.leaflet-popup-content .row { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid #eee; }
+
+/* Big KPI grid */
+.g-6 { display: grid; gap: 10px; grid-template-columns: repeat(6, 1fr); }
+@media (max-width: 1200px) { .g-6 { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 720px) { .g-6 { grid-template-columns: repeat(2, 1fr); } }
+
+.kpi.big .value { font-size: 20px; }
+.kpi .yoy-pos { color: var(--green); font-weight: 700; }
+.kpi .yoy-neg { color: var(--red); font-weight: 700; }
+.note { font-size: 12px; color: var(--text-light); margin-top: 10px; padding: 8px 12px; background: #f9fafb; border-right: 3px solid var(--primary-light); border-radius: 4px; }
+.tabhead { margin: 14px 0 4px; font-size: 14px; font-weight: 700; color: var(--primary); }
+</style>
+</head>
+<body>
+
+<div class="loader" id="loader"><div class="spinner"></div><div>טוען נתונים...</div></div>
+
+<header>
+  <div>
+    <h1>📊 נדל"ן ישראל — דשבורד מאקרו</h1>
+    <div class="subtitle">סקירה כללית, איכות נתונים ותובנות שוק</div>
+  </div>
+  <nav class="tabs">
+    <button data-tab="tab1" class="active" onclick="switchTab('tab1')">📊 סקירה ואיכות</button>
+    <button data-tab="tab2" onclick="switchTab('tab2')">🗺️ תמונה מאקרו ארצית</button>
+  </nav>
+  <div style="display:flex; gap:6px;">
+    <a href="nadlan_explorer.html">📋 מכירות</a>
+    <a href="nadlan_rent_explorer.html">🏠 שכירות</a>
+  </div>
+</header>
+
+<main id="tab1" class="tab-content active">
+
+  <!-- Top KPIs -->
+  <div class="section">
+    <h2>📌 סטטיסטיקות מפתח</h2>
+    <div class="grid g-4" id="top-kpis"></div>
+  </div>
+
+  <!-- Data Quality Alerts -->
+  <div class="section">
+    <h2>🚨 איכות נתונים — בעיות צפות</h2>
+    <div class="sub">בעיות באיכות הדאטה שהמערכת זיהתה (לחץ על "הסבר" לפרטים)</div>
+    <div id="alerts"></div>
+  </div>
+
+  <!-- Annual trend -->
+  <div class="section">
+    <h2>📈 מגמת מחירים ארצית</h2>
+    <div class="sub">מחיר עסקה ממוצע + מספר עסקאות שנתי (clean_transactions)</div>
+    <div class="grid g-2">
+      <div class="chart-box"><canvas id="chart-annual-price"></canvas></div>
+      <div class="chart-box"><canvas id="chart-annual-volume"></canvas></div>
+    </div>
+  </div>
+
+  <!-- City comparison + Growth -->
+  <div class="section">
+    <h2>🏙️ השוואת ערים</h2>
+    <div class="sub">מחיר חציוני ל-2024+ וגדילה 2020→2025</div>
+    <div class="grid g-2">
+      <div class="chart-box"><canvas id="chart-city-trend"></canvas></div>
+      <div>
+        <table id="growth-table"><thead><tr>
+          <th>יישוב</th><th>2020 ₪/מ"ר</th><th>2025 ₪/מ"ר</th><th>גידול</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rent vs Buy yield -->
+  <div class="section">
+    <h2>💰 השוואת שוק שכירות vs מכירה (Gross Yield)</h2>
+    <div class="sub">חישוב: (שכירות חודשית × 12) / מחיר ממוצע = תשואה ברוטו שנתית</div>
+    <div class="grid g-2">
+      <div class="chart-box"><canvas id="chart-yield"></canvas></div>
+      <div>
+        <table id="yield-table"><thead><tr>
+          <th>יישוב</th><th>מחיר ממוצע</th><th>שכירות חודשית</th><th>תשואה</th><th>שנים למחיר</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rent national trend -->
+  <div class="section">
+    <h2>📊 מגמת שכירות ארצית (22 חודשים אחרונים)</h2>
+    <div class="sub">מחיר שכירות ממוצע ארצי לפי קטגוריית חדרים</div>
+    <div class="chart-box"><canvas id="chart-rent-trend"></canvas></div>
+  </div>
+
+  <!-- Insights -->
+  <div class="section">
+    <h2>💡 תובנות מאקרו</h2>
+    <div class="grid g-3" id="insights"></div>
+  </div>
+
+  <!-- Property types + Rooms -->
+  <div class="section">
+    <h2>🏘️ פילוחים</h2>
+    <div class="grid g-2">
+      <div>
+        <h3 style="font-size:14px;margin:0 0 8px">לפי סוג נכס</h3>
+        <table id="ptypes-table"><thead><tr>
+          <th>סוג</th><th>עסקאות</th><th>אחוז</th><th>מחיר ממוצע</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+      <div>
+        <h3 style="font-size:14px;margin:0 0 8px">לפי מספר חדרים (2023+, דירות)</h3>
+        <table id="rooms-table"><thead><tr>
+          <th>חדרים</th><th>עסקאות</th><th>מ"ר ממוצע</th><th>מחיר</th><th>₪/מ"ר</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Missing data by city -->
+  <div class="section">
+    <h2>📋 שלמות נתונים לפי יישוב</h2>
+    <div class="sub">אחוז ערכים חסרים בשדות מרכזיים</div>
+    <table id="missing-table" style="font-size:12px;"><thead><tr>
+      <th>יישוב</th><th>סה"כ</th><th>חסר חדרים</th><th>חסר קומה</th><th>חסר שנת בנייה</th><th>חסר סוג נכס</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+
+  <!-- Top outliers list -->
+  <div class="section">
+    <h2>🔍 חריגים מובילים (Top Outliers)</h2>
+    <div class="sub">עסקאות עם ₪/מ"ר &gt; 200,000 (לרוב קרקעות ולא דירות)</div>
+    <table id="outliers-table" style="font-size:12px;"><thead><tr>
+      <th>תאריך</th><th>יישוב</th><th>כתובת</th><th>סוג</th>
+      <th>שטח (מ"ר)</th><th>מחיר</th><th>₪/מ"ר</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+
+</main>
+
+<!-- =========================== TAB 2: NATIONAL MACRO =========================== -->
+<main id="tab2" class="tab-content">
+
+  <!-- Extended KPIs - 6 boxes -->
+  <div class="section">
+    <h2>🎯 KPIs ארציים — 12 חודשים אחרונים</h2>
+    <div class="sub">סטטיסטיקות מסכמות + שינוי YoY מול 12 החודשים שקדמו</div>
+    <div class="g-6" id="kpis-v2"></div>
+    <div class="note" id="kpis-note"></div>
+  </div>
+
+  <!-- Heatmap -->
+  <div class="section">
+    <h2>🗺️ מפת חום ארצית</h2>
+    <div class="sub">לחץ על עיר לפרטים מלאים. מתג למעלה: שנה את המדד שמוצג בצבע</div>
+    <div class="map-wrap">
+      <div id="hmap"></div>
+      <div class="map-controls">
+        <label>הצג לפי:</label>
+        <select id="hmetric">
+          <option value="pps">מחיר ל-מ"ר</option>
+          <option value="avg_price">מחיר ממוצע</option>
+          <option value="growth_5y">צמיחה 5 שנים</option>
+          <option value="yield">תשואת שכירות</option>
+          <option value="years_to_buy">שנים להכנסה (Affordability)</option>
+          <option value="count">נפח עסקאות</option>
+        </select>
+        <div class="map-legend" id="hmap-legend"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auto-Insights -->
+  <div class="section">
+    <h2>💡 תובנות אוטומטיות</h2>
+    <div class="sub">המערכת זיהתה את המגמות הבאות מתוך הדאטה</div>
+    <div class="grid g-3" id="insights-v2"></div>
+  </div>
+
+  <!-- Region groups - Center vs Periphery -->
+  <div class="section">
+    <h2>🏛️ מרכז vs פריפריה — מגמת מחירים</h2>
+    <div class="sub">מחיר ממוצע למ"ר לפי קבוצת אזורים, ממוצע משוקלל לפי נפח עסקאות</div>
+    <div class="grid g-2">
+      <div class="chart-box" style="height:320px"><canvas id="chart-region"></canvas></div>
+      <div>
+        <div class="tabhead">פער מרכז → פריפריה לאורך זמן</div>
+        <table id="region-gap-table"><thead><tr>
+          <th>שנה</th><th>מרכז (₪/מ"ר)</th><th>פריפריה (₪/מ"ר)</th><th>פער</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Property type stacked area -->
+  <div class="section">
+    <h2>🏘️ נפח עסקאות לפי סוג נכס</h2>
+    <div class="sub">אחוז מהשוק לפי שנה (2010-2025). עזרה לזיהוי מעבר לקטגוריות שונות</div>
+    <div class="chart-box" style="height:320px"><canvas id="chart-ptype-stack"></canvas></div>
+  </div>
+
+  <!-- Affordability + Yield side by side -->
+  <div class="section">
+    <h2>🏠 נגישות לדיור + תשואת שכירות</h2>
+    <div class="sub">שנות הכנסה ממוצעות לרכישת דירה (חציוני 2022) ↔ תשואת שכירות שנתית ברוטו</div>
+    <div class="grid g-2">
+      <div>
+        <div class="tabhead">Affordability — Top 10 הכי נגישות / Top 10 הכי לא נגישות</div>
+        <table id="afford-table"><thead><tr>
+          <th>יישוב</th><th>שנות הכנסה</th><th>מחיר ממוצע</th><th>הכנסה שנתית</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+      <div>
+        <div class="tabhead">תשואות ברוטו לפי עיר (גבוה → נמוך)</div>
+        <div class="chart-box" style="height:340px"><canvas id="chart-yield-bars"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Yield-Price scatter -->
+  <div class="section">
+    <h2>📐 קשר מחיר ↔ תשואה</h2>
+    <div class="sub">ככל שהמחיר עולה — התשואה יורדת. ערים יקרות = קצב צמיחה גבוה אבל הכנסת השוטפת נמוכה</div>
+    <div class="chart-box" style="height:340px"><canvas id="chart-yield-scatter"></canvas></div>
+  </div>
+
+  <!-- Rent landscape (wider coverage - 80 settlements) -->
+  <div class="section">
+    <h2>💰 מפת שכירות מורחבת — 80 יישובים</h2>
+    <div class="sub">כל היישובים עם דאטת שכירות, ממוין לפי שכירות חודשית. מקור: data.nadlan.gov.il</div>
+    <table id="rent-landscape-table" style="font-size:12px;"><thead><tr>
+      <th>#</th><th>יישוב</th><th>שכירות חודשית</th><th>צמיחה 5 שנים</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+
+  <!-- Median vs Average national -->
+  <div class="section">
+    <h2>📐 חציוני vs ממוצע — מדד אי-שוויון</h2>
+    <div class="sub">פער ממוצע-חציוני מצביע על קונקרציה של עסקאות מאוד יקרות (top decile). דירות בלבד.</div>
+    <div class="chart-box" style="height:320px"><canvas id="chart-med-avg"></canvas></div>
+  </div>
+
+</main>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tabs button').forEach(el => el.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+  document.querySelector(`.tabs button[data-tab="${name}"]`).classList.add('active');
+  if (name === 'tab2' && !window.tab2Rendered) {
+    renderTab2();
+    window.tab2Rendered = true;
+  }
+}
+</script>
+
+<script>
+const B64 = "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";
+
+function decompressB64(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return JSON.parse(new TextDecoder("utf-8").decode(pako.inflate(bytes)));
+}
+
+const fmtCurrency = n => n == null ? "-" : "₪" + Math.round(n).toLocaleString("he-IL");
+const fmtNum = n => n == null ? "-" : Number(n).toLocaleString("he-IL");
+const fmtPct = n => n == null ? "-" : Number(n).toFixed(1) + "%";
+
+let D;
+
+function init() {
+  try {
+    D = decompressB64(B64);
+    renderKPIs();
+    renderAlerts();
+    renderAnnualCharts();
+    renderCityTrend();
+    renderGrowthTable();
+    renderYield();
+    renderRentTrend();
+    renderInsights();
+    renderPtypes();
+    renderRooms();
+    renderMissing();
+    renderOutliers();
+    document.getElementById("loader").style.display = "none";
+  } catch (e) {
+    document.getElementById("loader").innerHTML =
+      "<div style='color:red;padding:20px'><strong>שגיאה:</strong> " + e.message + "<br>" + e.stack + "</div>";
+    throw e;
+  }
+}
+
+function renderKPIs() {
+  const cleanPct = (D.issues.clean_tx / D.issues.total_tx * 100).toFixed(1);
+  const lastYr = D.annual[D.annual.length - 1];
+  const prevYr = D.annual[D.annual.length - 2] || lastYr;
+  const yoy = ((lastYr.pps - prevYr.pps) / prevYr.pps * 100).toFixed(1);
+  const allRoomAvg = D.yield_data.length ?
+    (D.yield_data.reduce((s,r)=>s+r.yield,0) / D.yield_data.length).toFixed(2) : "-";
+
+  document.getElementById("top-kpis").innerHTML = `
+    <div class="kpi">
+      <div class="label">סה"כ עסקאות</div>
+      <div class="value">${fmtNum(D.issues.total_tx)}</div>
+      <div class="delta">${fmtNum(D.issues.clean_tx)} אחרי סינון (${cleanPct}%)</div>
+    </div>
+    <div class="kpi">
+      <div class="label">חציון ₪/מ"ר ${lastYr.y}</div>
+      <div class="value">${fmtCurrency(lastYr.pps)}</div>
+      <div class="delta ${yoy >= 0 ? '' : ''}">YoY ${yoy >= 0 ? '+' : ''}${yoy}%</div>
+    </div>
+    <div class="kpi">
+      <div class="label">תשואת שכירות ממוצעת</div>
+      <div class="value">${allRoomAvg}%</div>
+      <div class="delta">ברוטו, שנתי, ${D.yield_data.length} ערים</div>
+    </div>
+    <div class="kpi ${D.issues.future_dates > 0 ? 'warn' : 'good'}">
+      <div class="label">בעיות איכות</div>
+      <div class="value">${fmtNum(D.issues.future_dates + D.issues.very_high_ppsm + D.issues.very_low_price)}</div>
+      <div class="delta">חריגים שזוהו</div>
+    </div>
+  `;
+}
+
+function renderAlerts() {
+  const alerts = [];
+  if (D.issues.future_dates > 0) {
+    alerts.push({type:'bad', icon:'🚨',
+      title: `${D.issues.future_dates} עסקאות עם תאריך עתידי`,
+      body: `אלה חוזי קבלן עם תאריך מסירה עתידי - מטעים סטטיסטיקה. סוננו ב-<code>clean_transactions</code>.`});
+  }
+  if (D.issues.very_high_ppsm > 0) {
+    const pct = (D.issues.very_high_ppsm / D.issues.total_tx * 100).toFixed(2);
+    alerts.push({type:'warn', icon:'⚠️',
+      title: `${fmtNum(D.issues.very_high_ppsm)} עסקאות עם מחיר/מ"ר מעל ₪200,000 (${pct}%)`,
+      body: `לרוב קרקעות שדווחו עם "1 מ\"ר" - יוצרים מחירים אבסורדיים. למשל ₪1.04 מיליארד/מ"ר בתכנית ל'. סוננו מ-clean.`});
+  }
+  if (D.issues.very_low_price > 0) {
+    const pct = (D.issues.very_low_price / D.issues.total_tx * 100).toFixed(2);
+    alerts.push({type:'warn', icon:'⚠️',
+      title: `${fmtNum(D.issues.very_low_price)} עסקאות מתחת ל-₪100K (${pct}%)`,
+      body: `כנראה תוספות בנייה, מתנות, או חלקי דירה. סוננו מ-clean.`});
+  }
+  if (D.issues.huge_area > 0) {
+    alerts.push({type:'warn', icon:'⚠️',
+      title: `${fmtNum(D.issues.huge_area)} נכסים עם שטח > 1,000 מ"ר`,
+      body: `קרקעות גדולות, בניינים שלמים - לא מייצגים מחירי דירות.`});
+  }
+  if (D.issues.no_year_built > 0) {
+    const pct = (D.issues.no_year_built / D.issues.total_tx * 100).toFixed(1);
+    alerts.push({type:'info', icon:'ℹ️',
+      title: `${fmtNum(D.issues.no_year_built)} עסקאות (${pct}%) חסרות שנת בנייה`,
+      body: `nadlan.gov.il לא מספק שנת בנייה ברוב העסקאות. אם רלוונטי - להעשיר מ-govmap או חישוב נפרד.`});
+  }
+  if (D.issues.no_property_type > 0) {
+    const pct = (D.issues.no_property_type / D.issues.total_tx * 100).toFixed(1);
+    alerts.push({type:'info', icon:'ℹ️',
+      title: `${fmtNum(D.issues.no_property_type)} עסקאות (${pct}%) חסרות סוג נכס`,
+      body: `קשה לסנן רק דירות. אפשר להניח דירה אם שטח 30-300 מ"ר ולא קרקע.`});
+  }
+
+  document.getElementById("alerts").innerHTML = alerts.map(a => `
+    <div class="alert alert-${a.type}">
+      <div class="icon">${a.icon}</div>
+      <div><strong>${a.title}</strong>${a.body}</div>
+    </div>
+  `).join('');
+}
+
+function renderAnnualCharts() {
+  // Price chart
+  new Chart(document.getElementById("chart-annual-price").getContext("2d"), {
+    type: "line",
+    data: {
+      labels: D.annual.map(a => a.y),
+      datasets: [
+        { label: 'מחיר עסקה ממוצע (₪)', data: D.annual.map(a => a.p),
+          borderColor: '#1e40af', backgroundColor: 'rgba(30,64,175,0.1)',
+          tension: 0.2, pointRadius: 3, fill: true, yAxisID: 'y' },
+        { label: '₪/מ"ר ממוצע', data: D.annual.map(a => a.pps),
+          borderColor: '#ea580c', backgroundColor: 'rgba(234,88,12,0.05)',
+          tension: 0.2, pointRadius: 3, yAxisID: 'y1', borderDash: [3,3] },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { position: 'top', labels: { font: { size: 11 } } },
+                 tooltip: { callbacks: { label: c => c.dataset.label + ": " + fmtCurrency(c.parsed.y) } } },
+      scales: {
+        y: { position: 'left', ticks: { callback: v => fmtCurrency(v), font: { size: 10 } }, title: { display: true, text: 'מחיר עסקה' } },
+        y1: { position: 'right', ticks: { callback: v => fmtCurrency(v), font: { size: 10 } }, grid: { display: false }, title: { display: true, text: '₪/מ"ר' } },
+      }
+    }
+  });
+
+  // Volume chart
+  new Chart(document.getElementById("chart-annual-volume").getContext("2d"), {
+    type: "bar",
+    data: {
+      labels: D.annual.map(a => a.y),
+      datasets: [{ label: 'מספר עסקאות', data: D.annual.map(a => a.n),
+        backgroundColor: 'rgba(4,120,87,0.6)', borderColor: '#047857', borderWidth: 1 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+                 tooltip: { callbacks: { label: c => fmtNum(c.parsed.y) + " עסקאות" } } },
+      scales: { y: { ticks: { callback: v => fmtNum(v), font: { size: 10 } } } }
+    }
+  });
+}
+
+function renderCityTrend() {
+  const allYears = [...new Set(D.city_trend.flatMap(c => c.points.map(p => p.y)))].sort();
+  const palette = ['#1e40af','#ea580c','#047857','#dc2626','#ca8a04','#7c3aed','#0891b2','#be185d'];
+
+  new Chart(document.getElementById("chart-city-trend").getContext("2d"), {
+    type: "line",
+    data: {
+      labels: allYears,
+      datasets: D.city_trend.map((c, i) => ({
+        label: c.city,
+        data: allYears.map(y => {
+          const p = c.points.find(p => p.y === y);
+          return p ? p.pps : null;
+        }),
+        borderColor: palette[i % palette.length],
+        backgroundColor: palette[i % palette.length] + '22',
+        tension: 0.2, pointRadius: 2, spanGaps: true,
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { font: { size: 10 }, boxWidth: 12 } },
+                 tooltip: { callbacks: { label: c => c.dataset.label + ": " + fmtCurrency(c.parsed.y) } } },
+      scales: { y: { ticks: { callback: v => fmtCurrency(v), font: { size: 10 } } } }
+    }
+  });
+}
+
+function renderGrowthTable() {
+  const tbody = document.querySelector("#growth-table tbody");
+  const max = Math.max(...D.growth.map(g => g.pct));
+  tbody.innerHTML = D.growth.map(g => {
+    const pillClass = g.pct >= 50 ? 'pill-bad' : g.pct >= 25 ? 'pill-warn' : 'pill-good';
+    return `<tr>
+      <td>${g.city}</td>
+      <td class="num">${fmtCurrency(g.p20)}</td>
+      <td class="num">${fmtCurrency(g.p25)}</td>
+      <td><span class="pill ${pillClass}">+${g.pct}%</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderYield() {
+  const sorted = D.yield_data.slice().sort((a,b) => b.yield - a.yield);
+  new Chart(document.getElementById("chart-yield").getContext("2d"), {
+    type: "bar",
+    data: {
+      labels: sorted.map(d => d.city),
+      datasets: [{ label: 'תשואת שכירות ברוטו (%)', data: sorted.map(d => d.yield),
+        backgroundColor: sorted.map(d =>
+          d.yield >= 3.5 ? '#047857' : d.yield >= 2.5 ? '#ca8a04' : '#dc2626'),
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+                 tooltip: { callbacks: { label: c => 'תשואה: ' + c.parsed.x + '%' } } },
+      scales: { x: { ticks: { callback: v => v + '%', font: { size: 10 } } },
+                y: { ticks: { font: { size: 11 } } } }
+    }
+  });
+
+  const tbody = document.querySelector("#yield-table tbody");
+  tbody.innerHTML = sorted.map(d => {
+    const years = (d.price / (d.rent * 12)).toFixed(1);
+    const pill = d.yield >= 3.5 ? 'pill-good' : d.yield >= 2.5 ? 'pill-warn' : 'pill-bad';
+    return `<tr>
+      <td>${d.city}</td>
+      <td class="num">${fmtCurrency(d.price)}</td>
+      <td class="num">${fmtCurrency(d.rent)}</td>
+      <td><span class="pill ${pill}">${d.yield}%</span></td>
+      <td class="num">${years}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderRentTrend() {
+  const labels = ['3 חדרים', '4 חדרים', '5+ חדרים', 'כללי'];
+  const colors = ['#3b82f6', '#047857', '#dc2626', '#ca8a04'];
+
+  const allKeys = new Set();
+  Object.values(D.rent_national).forEach(arr => arr.forEach(p => allKeys.add(`${p.y}-${String(p.m).padStart(2,'0')}`)));
+  const dates = [...allKeys].sort();
+
+  const datasets = [0,1,2,3].map(rt => {
+    const arr = D.rent_national[rt] || [];
+    const map = Object.fromEntries(arr.map(p => [`${p.y}-${String(p.m).padStart(2,'0')}`, p.p]));
+    return {
+      label: labels[rt], data: dates.map(d => map[d] || null),
+      borderColor: colors[rt], backgroundColor: colors[rt] + '22',
+      tension: 0.2, pointRadius: 2, spanGaps: true,
+    };
+  });
+
+  new Chart(document.getElementById("chart-rent-trend").getContext("2d"), {
+    type: "line",
+    data: { labels: dates, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'top', labels: { font: { size: 11 } } },
+                 tooltip: { callbacks: { label: c => c.dataset.label + ": " + fmtCurrency(c.parsed.y) } } },
+      scales: { x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+                y: { ticks: { callback: v => fmtCurrency(v), font: { size: 10 } } } }
+    }
+  });
+}
+
+function renderInsights() {
+  // Compute insights
+  const sortedYield = D.yield_data.slice().sort((a,b) => b.yield - a.yield);
+  const bestYield = sortedYield[0];
+  const worstYield = sortedYield[sortedYield.length - 1];
+  const topGrowth = D.growth[0];
+  const last = D.annual[D.annual.length - 1];
+  const first2010 = D.annual[0];
+  const totalGrowth = ((last.pps - first2010.pps) / first2010.pps * 100).toFixed(0);
+
+  const mostExpensive = D.city_summary[0];
+  const cheapest = D.city_summary[D.city_summary.length - 1];
+
+  const insights = [
+    {
+      title: '💎 התשואה הגבוהה ביותר',
+      body: `<strong>${bestYield.city}</strong> מציגה תשואת שכירות ברוטו של <strong>${bestYield.yield}%</strong>, עם מחיר ממוצע ${fmtCurrency(bestYield.price)} ושכירות ${fmtCurrency(bestYield.rent)}/חודש. זה ${(bestYield.yield / worstYield.yield).toFixed(1)} פעמים יותר מהעיר עם התשואה הנמוכה ביותר (${worstYield.city}: ${worstYield.yield}%).`
+    },
+    {
+      title: '📈 הצמיחה המהירה ביותר 2020→2025',
+      body: `<strong>${topGrowth.city}</strong> זינקה ב-<strong>+${topGrowth.pct}%</strong> תוך 5 שנים (${fmtCurrency(topGrowth.p20)} → ${fmtCurrency(topGrowth.p25)} לממ"ר). זוהי הצמיחה הגבוהה ביותר מבין ערי המדגם.`
+    },
+    {
+      title: '🏆 הכי יקרה לדירה (2024+)',
+      body: `<strong>${mostExpensive.city}</strong> מובילה במחיר ל-מ"ר: <strong>${fmtCurrency(mostExpensive.pps)}</strong>. דירה ממוצעת בעיר עולה ${fmtCurrency(mostExpensive.p)} (${mostExpensive.sqm}㎡, ${mostExpensive.r} חדרים).`
+    },
+    {
+      title: '💸 הכי זולה במדגם',
+      body: `<strong>${cheapest.city}</strong> עם <strong>${fmtCurrency(cheapest.pps)}/מ"ר</strong>. דירה ממוצעת עולה ${fmtCurrency(cheapest.p)}. פער של פי ${(mostExpensive.pps / cheapest.pps).toFixed(1)} מהיקרה ביותר.`
+    },
+    {
+      title: '📊 מגמת מאקרו 2010-' + last.y,
+      body: `מחיר ל-מ"ר ארצי <strong>גדל ב-${totalGrowth}%</strong> ב-${last.y - first2010.y} שנים (₪${first2010.pps.toLocaleString('he-IL')} → ₪${last.pps.toLocaleString('he-IL')}). זה ממוצע של ${(parseFloat(totalGrowth) / (last.y - first2010.y)).toFixed(1)}% בשנה.`
+    },
+    {
+      title: '🏠 כמה שנים עד שאני "מחזיר" את ההשקעה?',
+      body: `בממוצע (לא כולל הוצאות) <strong>${(D.yield_data.reduce((s,r)=>s+r.price/(r.rent*12),0) / D.yield_data.length).toFixed(0)} שנים</strong> של שכירות מצטברת = מחיר רכישה. נע מ-${(bestYield.price/(bestYield.rent*12)).toFixed(0)} שנים (${bestYield.city}) עד ${(worstYield.price/(worstYield.rent*12)).toFixed(0)} שנים (${worstYield.city}).`
+    },
+  ];
+
+  document.getElementById("insights").innerHTML = insights.map(i => `
+    <div class="insight">
+      <div class="title">${i.title}</div>
+      <div class="body">${i.body}</div>
+    </div>
+  `).join('');
+}
+
+function renderPtypes() {
+  const total = D.ptypes.reduce((s,p) => s + p.n, 0);
+  const max = Math.max(...D.ptypes.map(p => p.n));
+  document.querySelector("#ptypes-table tbody").innerHTML = D.ptypes.map(p => {
+    const pct = (p.n / total * 100).toFixed(1);
+    const bar = (p.n / max * 100).toFixed(0);
+    return `<tr>
+      <td>${p.t}</td>
+      <td class="bar-cell" style="min-width:90px"><span class="bar" style="width:${bar}%"></span><span class="num">${fmtNum(p.n)}</span></td>
+      <td class="num">${pct}%</td>
+      <td class="num">${fmtCurrency(p.p)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderRooms() {
+  document.querySelector("#rooms-table tbody").innerHTML = D.rooms.map(r => `
+    <tr>
+      <td class="num">${r.r}</td>
+      <td class="num">${fmtNum(r.n)}</td>
+      <td class="num">${fmtNum(r.sqm)}㎡</td>
+      <td class="num">${fmtCurrency(r.p)}</td>
+      <td class="num">${fmtCurrency(r.pps)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderMissing() {
+  document.querySelector("#missing-table tbody").innerHTML = D.missing_by_city.map(c => {
+    const pillClass = pct => pct > 50 ? 'pill-bad' : pct > 20 ? 'pill-warn' : 'pill-good';
+    return `<tr>
+      <td>${c.city}</td>
+      <td class="num">${fmtNum(c.total)}</td>
+      <td><span class="pill ${pillClass(c.no_rooms_pct)}">${c.no_rooms_pct}%</span></td>
+      <td><span class="pill ${pillClass(c.no_floor_pct)}">${c.no_floor_pct}%</span></td>
+      <td><span class="pill ${pillClass(c.no_yb_pct)}">${c.no_yb_pct}%</span></td>
+      <td><span class="pill ${pillClass(c.no_pt_pct)}">${c.no_pt_pct}%</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderOutliers() {
+  document.querySelector("#outliers-table tbody").innerHTML = D.outliers.map(o => `
+    <tr>
+      <td>${o.date}</td>
+      <td>${o.city}</td>
+      <td>${o.nbh} ${o.addr}</td>
+      <td>${o.ptype}</td>
+      <td class="num">${fmtNum(o.sqm)}</td>
+      <td class="num">${fmtCurrency(o.price)}</td>
+      <td class="num"><strong style="color:#dc2626">${fmtCurrency(o.pps)}</strong></td>
+    </tr>
+  `).join('');
+}
+
+const B64_V2 = "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";
+let D2;
+
+function renderTab2() {
+  try {
+    const bin = atob(B64_V2);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    D2 = JSON.parse(new TextDecoder("utf-8").decode(pako.inflate(bytes)));
+    renderKpisV2();
+    renderHeatmap();
+    renderInsightsV2();
+    renderRegion();
+    renderPtypeStack();
+    renderAffordTable();
+    renderYieldBars();
+    renderYieldScatter();
+    renderRentLandscape();
+    renderMedAvg();
+  } catch(e) {
+    alert("שגיאת רינדור טאב 2: " + e.message);
+    throw e;
+  }
+}
+
+function deltaSpan(yoy) {
+  if (yoy == null || isNaN(yoy)) return "";
+  const sign = yoy >= 0 ? "+" : "";
+  const cls = yoy >= 0 ? "yoy-pos" : "yoy-neg";
+  return `<span class="${cls}">${sign}${yoy.toFixed(1)}%</span>`;
+}
+
+function renderKpisV2() {
+  const k = D2.kpis;
+  document.getElementById("kpis-v2").innerHTML = `
+    <div class="kpi big"><div class="label">מחיר ממוצע ארצי</div>
+      <div class="value">${fmtCurrency(k.avg_12m)}</div>
+      <div class="delta">YoY ${deltaSpan(k.avg_yoy)}</div></div>
+    <div class="kpi big"><div class="label">מחיר חציוני ארצי</div>
+      <div class="value">${fmtCurrency(k.med_12m)}</div>
+      <div class="delta">YoY ${deltaSpan(k.med_yoy)}</div></div>
+    <div class="kpi big"><div class="label">₪/מ"ר ארצי</div>
+      <div class="value">${fmtCurrency(k.pps_12m)}</div>
+      <div class="delta">YoY ${deltaSpan(k.pps_yoy)}</div></div>
+    <div class="kpi big"><div class="label">נפח עסקאות</div>
+      <div class="value">${fmtNum(k.vol_12m)}</div>
+      <div class="delta">YoY ${deltaSpan(k.vol_yoy)}</div></div>
+    <div class="kpi big good"><div class="label">תשואת שכירות</div>
+      <div class="value">${k.yield_avg.toFixed(2)}%</div>
+      <div class="delta">ממוצע ${k.yield_n} ערים, ברוטו שנתי</div></div>
+    <div class="kpi big warn"><div class="label">Affordability</div>
+      <div class="value">${k.years_to_buy.toFixed(1)} שנים</div>
+      <div class="delta">מחיר ÷ הכנסה שנתית (חציוני 2022)</div></div>
+  `;
+
+  document.getElementById("kpis-note").innerHTML = `
+    <strong>הערה על נפח:</strong> ירידה ב-YoY מקורה בעיכוב דיווח טבעי (3-6 חודשים עד שעסקה מופיעה). 
+    ${k.vol_yoy < -20 ? "החדות מצביעה גם על האטה אמיתית בעקבות סביבת ריבית גבוהה." : ""}
+  `;
+}
+
+// === HEATMAP ===
+let hmap, hLayer;
+const METRIC_LABEL = {
+  pps: "₪/מ\"ר", avg_price: "מחיר ממוצע", growth_5y: "צמיחה 5 שנים %",
+  yield: "תשואת שכירות %", years_to_buy: "שנים לרכישה (Affordability)", count: "נפח עסקאות"
+};
+const METRIC_FMT = {
+  pps: v => "₪" + Math.round(v).toLocaleString("he-IL"),
+  avg_price: v => "₪" + Math.round(v/1000).toLocaleString("he-IL") + "K",
+  growth_5y: v => v.toFixed(1) + "%",
+  yield: v => v.toFixed(2) + "%",
+  years_to_buy: v => v.toFixed(1) + " שנים",
+  count: v => Math.round(v).toLocaleString("he-IL")
+};
+function colorScale(value, min, max, reversed) {
+  const t = max === min ? 0.5 : (value - min) / (max - min);
+  const tt = reversed ? 1 - t : t;
+  // Green (cool/low cost) -> Red (expensive)
+  const r = Math.round(40 + tt * 215), g = Math.round(180 - tt * 130), b = Math.round(80 - tt * 40);
+  return `rgb(${r},${g},${b})`;
+}
+function renderHeatmap() {
+  hmap = L.map("hmap", { zoomControl: true, attributionControl: false }).setView([31.5, 34.95], 7);
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18 }).addTo(hmap);
+  hLayer = L.layerGroup().addTo(hmap);
+  document.getElementById("hmetric").addEventListener("change", drawHmapLayer);
+  drawHmapLayer();
+}
+function drawHmapLayer() {
+  const metric = document.getElementById("hmetric").value;
+  const reversed = metric === "years_to_buy"; // for affordability, low = good
+  hLayer.clearLayers();
+  const values = D2.heatmap.map(c => c[metric]).filter(v => v != null);
+  if (!values.length) return;
+  const min = Math.min(...values), max = Math.max(...values);
+  D2.heatmap.forEach(city => {
+    if (city[metric] == null) return;
+    const color = colorScale(city[metric], min, max, reversed);
+    const radius = 10 + Math.sqrt(city.count) / 4;
+    const m = L.circleMarker([city.lat, city.lon], {
+      radius: radius, fillColor: color, color: "#fff", weight: 2,
+      opacity: 1, fillOpacity: 0.82
+    });
+    m.bindPopup(`
+      <b>${city.name}</b><br>
+      <div class="row"><span>קבוצה:</span><b>${city.group}</b></div>
+      <div class="row"><span>עסקאות בסה"כ:</span><b>${fmtNum(city.count)}</b></div>
+      <div class="row"><span>מחיר ממוצע:</span><b>${fmtCurrency(city.avg_price)}</b></div>
+      <div class="row"><span>₪/מ"ר:</span><b>${fmtCurrency(city.pps)}</b></div>
+      <div class="row"><span>צמיחה 5 שנים:</span><b>${city.growth_5y != null ? city.growth_5y.toFixed(1)+"%" : "-"}</b></div>
+      <div class="row"><span>שכירות חודשית:</span><b>${city.rent ? fmtCurrency(city.rent) : "-"}</b></div>
+      <div class="row"><span>תשואת שכירות:</span><b>${city.yield ? city.yield.toFixed(2)+"%" : "-"}</b></div>
+      <div class="row"><span>שנים לרכישה:</span><b>${city.years_to_buy ? city.years_to_buy.toFixed(1) : "-"}</b></div>
+    `);
+    m.addTo(hLayer);
+  });
+  const fmt = METRIC_FMT[metric];
+  const lo = reversed ? max : min, hi = reversed ? min : max;
+  document.getElementById("hmap-legend").innerHTML = `
+    <div style="font-weight:700;margin-bottom:4px">${METRIC_LABEL[metric]}</div>
+    <div class="row"><span class="dot" style="background:${colorScale(min,min,max,reversed)}"></span> נמוך: ${fmt(lo)}</div>
+    <div class="row"><span class="dot" style="background:${colorScale((min+max)/2,min,max,reversed)}"></span> בינוני: ${fmt((min+max)/2)}</div>
+    <div class="row"><span class="dot" style="background:${colorScale(max,min,max,reversed)}"></span> גבוה: ${fmt(hi)}</div>
+    <div style="font-size:10px;color:#9ca3af;margin-top:4px">גודל = נפח עסקאות</div>
+  `;
+}
+
+function renderInsightsV2() {
+  document.getElementById("insights-v2").innerHTML = D2.insights.map(ins => `
+    <div class="insight">
+      <div class="title">${ins.icon} ${ins.title}</div>
+      <div class="body">${ins.body}</div>
+    </div>
+  `).join('');
+}
+
+function renderRegion() {
+  const colors = {
+    "מרכז (גוש דן + שרון)": "#dc2626",
+    "ירושלים": "#7c3aed",
+    "חיפה והצפון": "#0891b2",
+    "שפלה ויהודה": "#ea580c",
+    "פריפריה": "#047857"
+  };
+  const allYears = new Set();
+  Object.values(D2.region_series).forEach(arr => arr.forEach(p => allYears.add(p.y)));
+  const years = [...allYears].sort();
+  const datasets = Object.entries(D2.region_series).map(([name, pts]) => {
+    const ptMap = Object.fromEntries(pts.map(p => [p.y, p.pps]));
+    return {
+      label: name,
+      data: years.map(y => ptMap[y] || null),
+      borderColor: colors[name] || "#888",
+      backgroundColor: (colors[name] || "#888") + "22",
+      borderWidth: 2.5,
+      tension: 0.25,
+      spanGaps: true
+    };
+  });
+  new Chart(document.getElementById("chart-region"), {
+    type: "line",
+    data: { labels: years, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "top", labels:{boxWidth:10}}},
+      scales: { y: { ticks: { callback: v => (v/1000).toFixed(0)+"K" }}}
+    }
+  });
+
+  // Region gap table
+  const center = D2.region_series["מרכז (גוש דן + שרון)"] || [];
+  const peri = D2.region_series["פריפריה"] || [];
+  const periByY = Object.fromEntries(peri.map(p => [p.y, p.pps]));
+  const tbody = center.filter(c => periByY[c.y]).slice(-10).map(c => {
+    const gap = c.pps / periByY[c.y];
+    return `<tr>
+      <td>${c.y}</td>
+      <td class="num">${fmtCurrency(c.pps)}</td>
+      <td class="num">${fmtCurrency(periByY[c.y])}</td>
+      <td class="num"><strong>×${gap.toFixed(2)}</strong></td>
+    </tr>`;
+  }).join('');
+  document.querySelector("#region-gap-table tbody").innerHTML = tbody;
+}
+
+function renderPtypeStack() {
+  const years = Object.keys(D2.ptype_by_year).map(Number).sort();
+  const typeColor = {
+    "דירה": "#3b82f6", "בנין": "#10b981", "קרקע": "#f59e0b",
+    "דירת גן": "#8b5cf6", "דירת גג (פנטהאוז)": "#ec4899",
+    "חד משפחתי (וילה)": "#06b6d4", "קוטג' דו משפחתי": "#f97316",
+    "משרד": "#6b7280", "עסק": "#94a3b8", "אחר": "#cbd5e1", "לא צוין": "#e2e8f0"
+  };
+  const types = new Set();
+  years.forEach(y => Object.keys(D2.ptype_by_year[y]).forEach(t => types.add(t)));
+  const typesList = [...types].filter(t => t in typeColor || true);
+  const datasets = typesList.map(t => ({
+    label: t,
+    data: years.map(y => {
+      const total = Object.values(D2.ptype_by_year[y]).reduce((a,b)=>a+b, 0);
+      return total ? (D2.ptype_by_year[y][t] || 0) / total * 100 : 0;
+    }),
+    backgroundColor: typeColor[t] || "#aaa",
+    borderWidth: 0
+  }));
+  new Chart(document.getElementById("chart-ptype-stack"), {
+    type: "bar",
+    data: { labels: years, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { x: { stacked: true }, y: { stacked: true, max: 100, ticks: { callback: v => v+"%" }}},
+      plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 } }}}
+    }
+  });
+}
+
+function renderAffordTable() {
+  const top = D2.afford.slice(0, 6);
+  const bottom = D2.afford.slice(-6).reverse();
+  const sep = `<tr><td colspan="4" style="text-align:center;background:#f9fafb;font-weight:700;color:#dc2626">— Top 6 הכי לא נגישות —</td></tr>`;
+  const head = `<tr><td colspan="4" style="text-align:center;background:#f0fdf4;font-weight:700;color:#047857">— Top 6 הכי נגישות —</td></tr>`;
+  const fmtRow = a => `<tr>
+    <td>${a.name}</td>
+    <td class="num"><strong>${a.years.toFixed(1)}</strong></td>
+    <td class="num">${fmtCurrency(a.avg)}</td>
+    <td class="num">${a.wage ? fmtCurrency(a.wage) : "-"}</td>
+  </tr>`;
+  document.querySelector("#afford-table tbody").innerHTML =
+    head + top.map(fmtRow).join('') + sep + bottom.map(fmtRow).join('');
+}
+
+function renderYieldBars() {
+  const data = D2.yield_full.slice(0, 15);
+  new Chart(document.getElementById("chart-yield-bars"), {
+    type: "bar",
+    data: {
+      labels: data.map(d => d.name),
+      datasets: [{
+        label: "תשואת שכירות ברוטו %",
+        data: data.map(d => d.yield),
+        backgroundColor: data.map(d => d.yield > 4 ? "#047857" : d.yield > 3 ? "#f59e0b" : "#dc2626"),
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: "y",
+      scales: { x: { ticks: { callback: v => v.toFixed(1) + "%" }}},
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.x.toFixed(2) + "%" }}}
+    }
+  });
+}
+
+function renderYieldScatter() {
+  new Chart(document.getElementById("chart-yield-scatter"), {
+    type: "scatter",
+    data: {
+      datasets: [{
+        label: "ערים",
+        data: D2.yield_full.map(d => ({ x: d.pps, y: d.yield, name: d.name })),
+        backgroundColor: "rgba(59,130,246,0.6)", pointRadius: 8, pointHoverRadius: 11
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { title: { display: true, text: 'מחיר/מ"ר (₪)' }, ticks: { callback: v => (v/1000).toFixed(0)+"K" }},
+        y: { title: { display: true, text: "תשואה ברוטו %" }, ticks: { callback: v => v.toFixed(1)+"%" }}
+      },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.raw.name}: ${ctx.raw.y.toFixed(2)}% @ ${fmtCurrency(ctx.raw.x)}/מ"ר` }}}
+    }
+  });
+}
+
+function renderRentLandscape() {
+  document.querySelector("#rent-landscape-table tbody").innerHTML = D2.rent_landscape.map((r, i) => {
+    const growth = r.growth_5y;
+    const cls = growth == null ? "" : growth > 30 ? "yoy-pos" : growth < 10 ? "yoy-neg" : "";
+    return `<tr>
+      <td>${i+1}</td>
+      <td>${r.name}</td>
+      <td class="num">${fmtCurrency(r.rent)}</td>
+      <td class="num ${cls}">${growth != null ? growth.toFixed(1)+"%" : "-"}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderMedAvg() {
+  new Chart(document.getElementById("chart-med-avg"), {
+    type: "line",
+    data: {
+      labels: D2.med_avg.map(p => p.y),
+      datasets: [
+        { label: "ממוצע", data: D2.med_avg.map(p => p.avg), borderColor: "#dc2626", backgroundColor: "#dc262622", tension: 0.3, borderWidth: 2.5 },
+        { label: "חציוני", data: D2.med_avg.map(p => p.med), borderColor: "#1e40af", backgroundColor: "#1e40af22", tension: 0.3, borderWidth: 2.5 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "top" }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ": " + fmtCurrency(ctx.parsed.y) }}},
+      scales: { y: { ticks: { callback: v => (v/1000000).toFixed(1) + "M" }}}
+    }
+  });
+}
+
+
+
+init();
+</script>
+</body>
+</html>
