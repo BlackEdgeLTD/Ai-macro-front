@@ -8,10 +8,8 @@ export type BoiSeriesDefinition =
       agencyId: string;
       dataflowId: string;
       version: string;
-      structureId?: string;
       seriesCode: string;
       startPeriod: string;
-      queryKey?: string;
       transform?: (value: number) => number;
       aggregate?: "month-end";
     };
@@ -28,8 +26,6 @@ export const BOI_SERIES_DEFINITIONS: BoiSeriesDefinition[] = [
     version: "1.0",
     seriesCode: "MNT_RIB_BOI_D",
     startPeriod: "2016-01",
-    queryKey: "all",
-    aggregate: "month-end",
   },
   {
     kind: "sdmx",
@@ -149,7 +145,6 @@ export const BOI_SERIES_DEFINITIONS: BoiSeriesDefinition[] = [
     unit: 'מיליארד ש"ח',
     agencyId: "BOI.STATISTICS",
     dataflowId: "BFR_99",
-    structureId: "BFR",
     version: "1.0",
     seriesCode: "BNK_99910_FR_FINREP_268",
     startPeriod: "2024-01",
@@ -175,7 +170,6 @@ export const BOI_SERIES_DEFINITIONS: BoiSeriesDefinition[] = [
     unit: "%",
     agencyId: "BOI.STATISTICS",
     dataflowId: "BIR_MRTG_99",
-    structureId: "BIR_MRTG",
     version: "1.0",
     seriesCode: "BNK_99034_LR_BIR_MRTG_462",
     startPeriod: "2024-01",
@@ -188,7 +182,6 @@ export const BOI_SERIES_DEFINITIONS: BoiSeriesDefinition[] = [
     unit: 'מיליארד ש"ח',
     agencyId: "BOI.STATISTICS",
     dataflowId: "BIR_MRTG_99",
-    structureId: "BIR_MRTG",
     version: "1.0",
     seriesCode: "BNK_99034_LR_BIR_MRTG_897",
     startPeriod: "2024-01",

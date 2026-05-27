@@ -5,9 +5,6 @@ import type { BoiDashboardSummary, BoiPoint, BoiSeries } from "@/lib/boi-types";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const BOI_SDMX_API = "https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2";
-//const DEFAULT_START_PERIOD = `${new Date().getUTCFullYear() - 10}-01`;
-
-const dimensionCountCache = new Map<string, Promise<number>>();
 
 function labelFromDate(date: string) {
   if (/^\d{4}-\d{2}$/.test(date)) {
@@ -29,52 +26,75 @@ function labelFromDate(date: string) {
   return date;
 }
 
-function wildcardKey(seriesCode: string, dimensionCount: number) {
-  return seriesCode + ".".repeat(Math.max(0, dimensionCount - 1));
-}
+function parseCsvRow(line: string): string[] {
+  const cols: string[] = [];
+  let current = "";
+  let inQuotes = false;
 
-function parseXmlAttributes(source: string) {
-  const attributes = new Map<string, string>();
-  const attributePattern = /([A-Z0-9_]+)="([^"]*)"/g;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
 
-  for (const match of source.matchAll(attributePattern)) {
-    const [, key, value] = match;
-    attributes.set(key, value);
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      cols.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
   }
 
-  return attributes;
+  cols.push(current);
+  return cols;
 }
 
-function parseSdmxSeries(xml: string) {
-  const seriesMatch = xml.match(/<Series\b([^>]*)>/);
+function parseCsvSeries(csv: string): BoiPoint[] | null {
+  const lines = csv.trim().split("\n");
 
-  if (!seriesMatch) {
+  if (lines.length < 2) {
     return null;
   }
 
-  const attributes = parseXmlAttributes(seriesMatch[1]);
-  const points: BoiPoint[] = [];
-  const obsPattern = /<Obs\b[^>]*TIME_PERIOD="([^"]+)"[^>]*OBS_VALUE="([^"]+)"/g;
+  const headers = parseCsvRow(lines[0]);
+  const timePeriodIdx = headers.indexOf("TIME_PERIOD");
+  const obsValueIdx = headers.indexOf("OBS_VALUE");
 
-  for (const match of xml.matchAll(obsPattern)) {
-    const [, date, rawValue] = match;
+  if (timePeriodIdx === -1 || obsValueIdx === -1) {
+    return null;
+  }
+
+  const points: BoiPoint[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    if (!line) {
+      continue;
+    }
+
+    const cols = parseCsvRow(line);
+    const date = cols[timePeriodIdx];
+    const rawValue = cols[obsValueIdx];
+
+    if (!date || !rawValue) {
+      continue;
+    }
+
     const value = Number(rawValue);
 
     if (!Number.isFinite(value)) {
       continue;
     }
 
-    points.push({
-      date,
-      label: labelFromDate(date),
-      value,
-    });
+    points.push({ date, label: labelFromDate(date), value });
   }
 
-  return {
-    attributes,
-    points,
-  };
+  return points.length > 0 ? points : null;
 }
 
 function aggregateMonthEnd(points: BoiPoint[]) {
@@ -96,6 +116,24 @@ function aggregateMonthEnd(points: BoiPoint[]) {
   return Array.from(byMonth.values()).sort((left, right) => left.date.localeCompare(right.date));
 }
 
+async function fetchPublicInterestRate(): Promise<number | null> {
+  try {
+    const response = await fetch("https://www.boi.org.il/PublicApi/GetInterest", {
+      cache: "no-store",
+      signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = (await response.json()) as { currentInterest: number };
+    return typeof data.currentInterest === "number" ? data.currentInterest : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchText(url: string) {
   const response = await fetch(url, {
     cache: "no-store",
@@ -103,62 +141,22 @@ async function fetchText(url: string) {
   });
 
   if (!response.ok) {
-    throw new Error(`BOI request failed: ${response.status}`);
+    throw new Error(`BOI request failed: ${response.status} for ${url}`);
   }
 
   return response.text();
 }
 
-async function getDimensionCount(definition: Extract<BoiSeriesDefinition, { kind: "sdmx" }>) {
-  const structureId = definition.structureId ?? definition.dataflowId;
-  const cacheKey = `${definition.agencyId}:${structureId}:${definition.version}`;
-  const existing = dimensionCountCache.get(cacheKey);
-
-  if (existing) {
-    return existing;
-  }
-
-  const nextLoad = (async () => {
-    const xml = await fetchText(
-      `${BOI_SDMX_API}/structure/datastructure/${definition.agencyId}/${structureId}/${definition.version}`,
-    );
-    const dimensions = new Set<string>();
-    const dimensionPattern = /<str:Dimension\b[^>]*id="([A-Z0-9_]+)"[^>]*position="([0-9]+)"/g;
-
-    for (const match of xml.matchAll(dimensionPattern)) {
-      const [, id] = match;
-
-      if (id !== "TIME_PERIOD") {
-        dimensions.add(id);
-      }
-    }
-
-    if (dimensions.size === 0) {
-      throw new Error(`Could not resolve BOI dimensions for ${cacheKey}`);
-    }
-
-    return dimensions.size;
-  })();
-
-  dimensionCountCache.set(cacheKey, nextLoad);
-  nextLoad.catch(() => dimensionCountCache.delete(cacheKey));
-  return nextLoad;
-}
-
 async function fetchSdmxSeries(definition: Extract<BoiSeriesDefinition, { kind: "sdmx" }>): Promise<BoiSeries> {
-  const key =
-    definition.queryKey ??
-    wildcardKey(definition.seriesCode, await getDimensionCount(definition));
-  const xml = await fetchText(
-    `${BOI_SDMX_API}/data/dataflow/${definition.agencyId}/${definition.dataflowId}/${definition.version}/${key}?startperiod=${definition.startPeriod}&format=compact_2_1`,
-  );
-  const parsed = parseSdmxSeries(xml);
+  const url = `${BOI_SDMX_API}/data/dataflow/${definition.agencyId}/${definition.dataflowId}/${definition.version}/?c%5BSERIES_CODE%5D=${definition.seriesCode}&startperiod=${definition.startPeriod}&format=csv`;
+  const csv = await fetchText(url);
+  const rawPoints = parseCsvSeries(csv);
 
-  if (!parsed) {
+  if (!rawPoints) {
     throw new Error(`BOI series returned no data: ${definition.seriesCode}`);
   }
 
-  let points = parsed.points.map((point) => ({
+  let points = rawPoints.map((point) => ({
     ...point,
     value: definition.transform ? definition.transform(point.value) : point.value,
   }));
@@ -177,10 +175,37 @@ async function fetchSdmxSeries(definition: Extract<BoiSeriesDefinition, { kind: 
 }
 
 async function fetchBoiDashboardSummaryFresh(): Promise<BoiDashboardSummary> {
-  const results = await Promise.allSettled(BOI_SERIES_DEFINITIONS.map((definition) => fetchSdmxSeries(definition)));
+  const [results, publicRate] = await Promise.all([
+    Promise.allSettled(BOI_SERIES_DEFINITIONS.map((definition) => fetchSdmxSeries(definition))),
+    fetchPublicInterestRate(),
+  ]);
+
   const series = results
     .filter((r): r is PromiseFulfilledResult<BoiSeries> => r.status === "fulfilled")
     .map((r) => r.value);
+
+  const rejected = results.filter((r) => r.status === "rejected");
+
+  if (rejected.length > 0) {
+    console.warn(`[boi] ${rejected.length} series failed to fetch:`, rejected.map((r) => (r as PromiseRejectedResult).reason));
+  }
+
+  // Override today's policy rate with the public API value, which is always up-to-date
+  if (publicRate !== null) {
+    const policyRateSeries = series.find((s) => s.key === "policy_rate");
+
+    if (policyRateSeries) {
+      const today = new Date().toISOString().slice(0, 10);
+      const todayIdx = policyRateSeries.points.findIndex((p) => p.date === today);
+      const todayPoint: BoiPoint = { date: today, label: labelFromDate(today), value: publicRate };
+
+      if (todayIdx >= 0) {
+        policyRateSeries.points[todayIdx] = todayPoint;
+      } else {
+        policyRateSeries.points.push(todayPoint);
+      }
+    }
+  }
 
   return {
     title: "BOI Macro Watchlist",
@@ -190,7 +215,7 @@ async function fetchBoiDashboardSummaryFresh(): Promise<BoiDashboardSummary> {
 }
 
 export async function fetchBoiDashboardSummary(): Promise<BoiDashboardSummary> {
-  return withWeeklyBlobArtifacts("boi-source-v3", async () => {
+  return withWeeklyBlobArtifacts("boi-source-v5", async () => {
     const value = await fetchBoiDashboardSummaryFresh();
     const rows: SourceTableRow[] = value.series.flatMap((series) =>
       series.points.map((point) => ({
