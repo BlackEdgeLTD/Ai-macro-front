@@ -9,3 +9,6 @@ README.md
 .env*
 .DS_Store
 *.tsbuildinfo
+
+# Local-only nadlan source data (~600MB of SQLite / CSVs / geojson)
+src/nadlan/
