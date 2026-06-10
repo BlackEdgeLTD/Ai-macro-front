@@ -59,6 +59,7 @@ All charts join census stat areas to price stats computed from `clean_transactio
 ### Existing tab updates
 
 - **Transaction explorer (סייר עסקאות): street filter.** Add a street search field next to the existing city/neighborhood/type/year/price/rooms filters. Behavior: free-text autocomplete scoped to the selected city (street list narrows when a city is chosen); filtering updates the table, the result-count summary line, and the map markers, exactly like existing filters. Implementation: the packed transaction arrays gain a street-index column referencing a deduplicated street-name dictionary (13,925 entries) embedded once — estimated +300–500KB gzipped. Each table row also displays the street + house number column (currently absent).
+- **Transaction explorer: gush/chelka (גוש/חלקה) filter.** Two numeric fields — gush and optional chelka (parcel) — alongside the street filter. 100% of clean transactions carry `gush_num` + `parcel_num` (2,613 distinct gush). Exact-match filtering; same table/summary/map update behavior. Implementation: gush and parcel packed as two integer columns in the transaction arrays (~+400KB gzipped). The table gains a גוש/חלקה column displayed as `gush/parcel`.
 - **Quality tab:** add floor-parse coverage stat and the `year_built`-is-empty note.
 - **Overview tab:** one new insight card if a striking demographics finding emerges from the computed data (e.g., strongest wage-price outlier).
 
@@ -74,7 +75,7 @@ dashboard_template.html
 copy output → Ai-macro-front/public/nadlan/index.html
 ```
 
-Page weight budget: ≤1.5MB increase over the current 8.8MB — ~0.5MB for the per-transaction street index + name dictionary (explorer filter), ~1MB for all new aggregate sections (raw rows never embedded for new sections; the heaviest aggregate, the street league table, is a few thousand small tuples).
+Page weight budget: ≤2MB increase over the current 8.8MB — ~0.5MB for the per-transaction street index + name dictionary, ~0.4MB for gush/parcel columns, ~1MB for all new aggregate sections (raw rows never embedded for new sections; the heaviest aggregate, the street league table, is a few thousand small tuples).
 
 ## Error handling
 
