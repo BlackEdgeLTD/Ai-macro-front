@@ -58,6 +58,7 @@ All charts join census stat areas to price stats computed from `clean_transactio
 
 ### Existing tab updates
 
+- **Transaction explorer (סייר עסקאות): street filter.** Add a street search field next to the existing city/neighborhood/type/year/price/rooms filters. Behavior: free-text autocomplete scoped to the selected city (street list narrows when a city is chosen); filtering updates the table, the result-count summary line, and the map markers, exactly like existing filters. Implementation: the packed transaction arrays gain a street-index column referencing a deduplicated street-name dictionary (13,925 entries) embedded once — estimated +300–500KB gzipped. Each table row also displays the street + house number column (currently absent).
 - **Quality tab:** add floor-parse coverage stat and the `year_built`-is-empty note.
 - **Overview tab:** one new insight card if a striking demographics finding emerges from the computed data (e.g., strongest wage-price outlier).
 
@@ -73,7 +74,7 @@ dashboard_template.html
 copy output → Ai-macro-front/public/nadlan/index.html
 ```
 
-Page weight budget: ≤1MB increase over the current 8.8MB (all data pre-aggregated; raw rows never embedded for new sections — the heaviest item, the street table, is ~5K rows of small tuples).
+Page weight budget: ≤1.5MB increase over the current 8.8MB — ~0.5MB for the per-transaction street index + name dictionary (explorer filter), ~1MB for all new aggregate sections (raw rows never embedded for new sections; the heaviest aggregate, the street league table, is a few thousand small tuples).
 
 ## Error handling
 
