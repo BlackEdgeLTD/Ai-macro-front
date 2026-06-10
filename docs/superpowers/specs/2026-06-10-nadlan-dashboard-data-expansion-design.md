@@ -10,25 +10,25 @@ The deployed dashboard (`Ai-macro-front/public/nadlan/{index,macro,rent}.html`) 
 
 - Build script: `/Users/avichay/Downloads/knowledgebase/complaince/nadlan-service/scripts/05_build_dashboard.py` (591 lines)
 - Template: `.../scripts/dashboard_template.html` (1,188 lines; tabs: t-overview, t-national, t-buy, t-rent, t-compare, t-quality)
-- DB: `.../data/nadlan_transactions.sqlite` (same schema as the copy in `Ai-macro-front/src/nadlan/`)
+- DB: `.../data/nadlan_transactions.sqlite` — **this is the source of truth**: 759,059 raw / 682,236 clean transactions (verified 2026-06-10). The copy in `Ai-macro-front/src/nadlan/` is a stale 285K snapshot; all builds must run against the nadlan-service DB.
 - Data embedding: aggregates packed as JSON, gzip+base64 (`pako` decompresses client-side); charts via Chart.js 4.4, maps via Leaflet.
 
 Output is copied into `Ai-macro-front/public/nadlan/` and served via Next.js rewrites (`/nadlan` → `/nadlan/index.html`).
 
 ### Unused data confirmed in the DB
 
-| Dataset | Size | Current usage |
+| Dataset | Size (nadlan-service DB) | Current usage |
 |---|---|---|
 | `census_2022_statarea` | 2,193 stat areas × ~60 demographic columns | Only national avg wage (1 KPI) + per-locality wage |
-| Street fields on transactions | 5,164 distinct streets, 223,867 tx (86%) | None |
-| `floor_no` | 243,978 tx (94%), Hebrew ordinals, 1,178 distinct raw values | None |
-| `asset_room_num` | 97% coverage | Partial (filter only) |
-| `deal_nature` | Property subtype (דירה בבית קומות, קוטג', דירת גן, פנטהאוז…), 90% coverage | None |
-| Census ↔ transactions join | `clean_transactions.yishuv_stat_2022 = census_2022_statarea.our_yishuv_stat_2022`, **89% of clean tx (231,529) match** | Unused |
+| Street fields on transactions | 13,925 distinct streets, 601,579 tx (88%) | None |
+| `floor_no` | 636,030 tx (93%), Hebrew ordinals | None |
+| `asset_room_num` | ~97% coverage | Partial (filter only) |
+| `deal_nature` | Property subtype (דירה בבית קומות, קוטג', דירת גן, פנטהאוז…), ~90% coverage | None |
+| Census ↔ transactions join | `clean_transactions.yishuv_stat_2022 = census_2022_statarea.our_yishuv_stat_2022`, **75% of clean tx (511,499) match** | Unused |
 
 ### Not supported (dropped from scope)
 
-- **Building age:** `year_built` is 100% NULL across all 285K rows. Noted as a future collection target; no dashboard work.
+- **Building age:** `year_built` is 100% NULL in both the stale copy and the fresh 759K-row nadlan-service DB. Noted as a future collection target; no dashboard work.
 - **New-build vs second-hand:** `deal_nature` is subtype, not sale-order. Replaced by subtype premium analysis.
 
 ## Approach (chosen: A)
@@ -51,7 +51,7 @@ All charts join census stat areas to price stats computed from `clean_transactio
 
 ### New tab 2: 🛣️ רחובות ומבנה (Streets & Property Structure)
 
-6. **Street league table** — aggregate `clean_transactions` by (city, street): median ₪/m², median price, deal count, last-3y YoY. **Threshold: ≥15 deals.** Searchable + sortable; per-city top-10 most expensive / cheapest streets as quick chips. Streets are city-scoped (same name across cities = separate rows).
+6. **Street league table** — aggregate `clean_transactions` by (city, street): median ₪/m², median price, deal count, last-3y YoY. **Threshold: ≥15 deals** (13,925 streets total; threshold keeps the embedded table a few thousand rows). Searchable + sortable; per-city top-10 most expensive / cheapest streets as quick chips. Streets are city-scoped (same name across cities = separate rows).
 7. **Floor premium curve** — normalize `floor_no` Hebrew ordinals → integers (קרקע=0, ראשונה=1 … עשרים=20; multi-part values like "ראשונה+מרתף" take the primary dwelling floor; unparseable → excluded, with parse-rate reported in the quality tab). Line chart: median ₪/m² by floor (0–20+) nationally + selectable per city, apartments only (`property_type='דירה'`).
 8. **Rooms over time** — median price and ₪/m² by room bucket (2, 3, 4, 5, 6+) per year, 2000–present. Line chart, bucket toggle.
 9. **Subtype premiums** — median ₪/m² by `deal_nature` subtype (apartment-in-building baseline; garden apt, cottage, penthouse, duplex…), national + per-city bar chart, ≥100 deals per subtype.
@@ -80,7 +80,7 @@ Page weight budget: ≤1MB increase over the current 8.8MB (all data pre-aggrega
 - Census TEXT columns: empty strings → NULL → excluded from that chart (not zero).
 - Stat areas/streets below deal thresholds: excluded from charts, included in tables only if ≥5 deals with a low-sample flag.
 - Floor strings that don't map: excluded; parse-rate surfaced in quality tab.
-- Build script asserts the census join rate ≥ 80% and aborts with a clear error if the DB schema drifts.
+- Build script asserts the census join rate ≥ 70% (currently 75%) and aborts with a clear error if the DB schema drifts.
 
 ## Testing
 
